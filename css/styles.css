@@ -1,51 +1,142 @@
 body {
-    font-family: Arial, sans-serif;
+    --bg: #000;
+    --fg: #fff;
+    --border: #fff;
+    --shadow: #fff2;
+    --canvas-bg: #000;
+    --button-bg: #000;
+    --button-fg: #fff;
+    --button-border: #fff;
+    --button-shadow1: #fff;
+    --button-shadow2: #000;
+    --leaderboard-bg: #000;
+    --leaderboard-border: #fff;
+    --leaderboard-li-border: #fff3;
+    --score-shadow: 0 0 2px #fff, 0 0 8px #fff4;
+    font-family: 'Courier New', Courier, 'Lucida Console', monospace;
     display: flex;
     justify-content: center;
     align-items: center;
     height: 100vh;
     margin: 0;
-    background-color: #70c5ce;
+    background-color: var(--bg);
+    color: var(--fg);
+    letter-spacing: 1px;
+    transition: background 0.3s, color 0.3s;
+}
+
+body.light-mode {
+    --bg: #fff;
+    --fg: #000;
+    --border: #000;
+    --shadow: #0002;
+    --canvas-bg: #fff;
+    --button-bg: #fff;
+    --button-fg: #000;
+    --button-border: #000;
+    --button-shadow1: #000;
+    --button-shadow2: #fff;
+    --leaderboard-bg: #fff;
+    --leaderboard-border: #000;
+    --leaderboard-li-border: #0003;
+    --score-shadow: 0 0 2px #000, 0 0 8px #0004;
 }
 
 #game-container {
     position: relative;
     text-align: center;
+    background: var(--bg);
+    border: 4px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 0 24px var(--shadow), 0 0 0 4px var(--bg);
+    padding: 32px 32px 24px 32px;
+    transition: background 0.3s, color 0.3s, border 0.3s;
 }
 
 #game-canvas {
-    border: 2px solid #000;
-    background-color: #70c5ce;
+    border: 2px solid var(--border);
+    background-color: var(--canvas-bg);
+    display: block;
+    margin: 0 auto 16px auto;
+    box-shadow: 0 0 12px var(--shadow);
+    transition: background 0.3s, border 0.3s;
 }
 
 #ui {
     margin-top: 10px;
+    background: var(--bg);
+    border: 2px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 0 8px 0;
+    box-shadow: 0 0 8px var(--shadow);
+    transition: background 0.3s, border 0.3s;
 }
 
 #score {
-    font-size: 24px;
+    font-size: 28px;
     font-weight: bold;
+    font-family: 'Courier New', Courier, 'Lucida Console', monospace;
+    color: var(--fg);
+    text-shadow: var(--score-shadow);
+    margin-bottom: 8px;
+    transition: color 0.3s, text-shadow 0.3s;
 }
 
 button {
     margin: 5px;
-    padding: 10px 20px;
-    font-size: 16px;
+    padding: 10px 28px;
+    font-size: 18px;
+    font-family: 'Courier New', Courier, 'Lucida Console', monospace;
+    background: var(--button-bg);
+    color: var(--button-fg);
+    border: 2px solid var(--button-border);
+    border-radius: 0;
     cursor: pointer;
+    box-shadow: 2px 2px 0 var(--button-shadow1), 4px 4px 0 var(--button-shadow2);
+    transition: background 0.2s, color 0.2s, box-shadow 0.2s, border 0.2s;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+button:hover, button:focus {
+    background: var(--button-fg);
+    color: var(--button-bg);
+    box-shadow: 2px 2px 0 var(--button-shadow2), 4px 4px 0 var(--button-shadow1);
+    outline: none;
 }
 
 #leaderboard {
-    margin-top: 20px;
-    background-color: rgba(255, 255, 255, 0.8);
-    padding: 10px;
-    border-radius: 5px;
+    margin-top: 24px;
+    background: var(--leaderboard-bg);
+    border: 2px solid var(--leaderboard-border);
+    padding: 16px 8px 8px 8px;
+    border-radius: 0;
+    box-shadow: 0 0 8px var(--shadow);
+    transition: background 0.3s, border 0.3s;
 }
 
 #leaderboard-list {
     list-style: none;
     padding: 0;
+    font-family: 'Courier New', Courier, 'Lucida Console', monospace;
+    color: var(--fg);
+    font-size: 18px;
+    transition: color 0.3s;
 }
 
 #leaderboard-list li {
     padding: 5px 0;
+    border-bottom: 1px dashed var(--leaderboard-li-border);
+}
+
+#leaderboard-list li:last-child {
+    border-bottom: none;
+}
+
+h2, #wallet-info {
+    font-family: 'Courier New', Courier, 'Lucida Console', monospace;
+    color: var(--fg);
+    text-shadow: var(--score-shadow);
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+    transition: color 0.3s, text-shadow 0.3s;
 }

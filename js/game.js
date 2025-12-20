@@ -1,3 +1,34 @@
+// --- Dark/Light Mode Toggle Logic ---
+const modeToggleBtn = document.getElementById('toggle-mode-btn');
+const body = document.body;
+
+// Load mode from localStorage or default to dark
+function setMode(mode) {
+    if (mode === 'light') {
+        body.classList.add('light-mode');
+        localStorage.setItem('flappy-mode', 'light');
+        modeToggleBtn.textContent = 'Switch to Dark Mode';
+    } else {
+        body.classList.remove('light-mode');
+        localStorage.setItem('flappy-mode', 'dark');
+        modeToggleBtn.textContent = 'Switch to Light Mode';
+    }
+}
+
+function toggleMode() {
+    if (body.classList.contains('light-mode')) {
+        setMode('dark');
+    } else {
+        setMode('light');
+    }
+}
+
+if (modeToggleBtn) {
+    modeToggleBtn.addEventListener('click', toggleMode);
+    // On load, set mode from storage
+    const savedMode = localStorage.getItem('flappy-mode');
+    setMode(savedMode === 'light' ? 'light' : 'dark');
+}
 // Flappy Bird Game Logic
 // This file will contain the main game mechanics using HTML5 Canvas
 
@@ -131,7 +162,7 @@ function updateScore() {
 
 // Show game over
 function showGameOver() {
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    // ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#fff';
     ctx.font = '36px Arial';
