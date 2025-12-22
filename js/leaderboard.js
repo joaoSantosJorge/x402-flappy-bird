@@ -16,6 +16,12 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
+// Connect to Firestore emulator if running locally
+if (location.hostname === "localhost") {
+    db.useEmulator("localhost", 8080);
+    console.log("Using Firestore emulator at localhost:8080");
+}
+
 // Get current month key
 function getCurrentMonthKey() {
     const now = new Date();
@@ -23,9 +29,15 @@ function getCurrentMonthKey() {
 }
 
 // Submit score
+// If walletAddress is not provided, use a random guest ID for local testing
 async function submitScore(walletAddress, score) {
     const monthKey = getCurrentMonthKey();
-    const docRef = db.collection('leaderboards').doc(monthKey).collection('scores').doc(walletAddress);
+    let userId = walletAddress;
+    if (!userId) {
+        // Use a random guest ID for local testing
+        userId = 'guest-' + Math.random().toString(36).substring(2, 10);
+    }
+    const docRef = db.collection('leaderboards').doc(monthKey).collection('scores').doc(userId);
 
     try {
         await docRef.set({

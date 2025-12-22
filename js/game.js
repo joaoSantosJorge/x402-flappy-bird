@@ -174,9 +174,9 @@ function showGameOver() {
     ctx.textAlign = 'left';
 
     // Submit score to leaderboard if connected
-    if (typeof userAccount !== 'undefined' && userAccount && score > 0) {
+    //if (typeof userAccount !== 'undefined' && userAccount && score > 0) {
         submitScore(userAccount, score);
-    }
+    //}
 }
 
 // Reset game
