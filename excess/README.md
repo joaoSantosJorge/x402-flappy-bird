@@ -1,1 +1,0 @@
-This folder contains files that are not part of the core Flappy Bird game with leaderboard and x402 payments. Moved here for project clarity.
