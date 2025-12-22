@@ -25,9 +25,8 @@ Thumbs.db
 # Cache/temp
 cache/
 
-# Old smart contract folders
+# smart contract folders
 lib/
-*.sol
 
 # Python
 __pycache__/
