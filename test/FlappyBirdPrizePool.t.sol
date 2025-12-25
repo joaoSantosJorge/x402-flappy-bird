@@ -3,19 +3,26 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
 import "../contracts/FlappyBirdPrizePool.sol";
+import "./MockUSDC.sol";
 
 contract FlappyBirdPrizePoolTest is Test {
     FlappyBirdPrizePool pool;
+    MockUSDC usdc;
     address owner = address(0x1);
     address winner1 = address(0x2);
     address winner2 = address(0x3);
     address winner3 = address(0x4);
 
     function setUp() public {
+        // Deploy mock USDC
+        usdc = new MockUSDC();
+        
+        // Deploy pool with USDC address
         vm.prank(owner);
-        pool = new FlappyBirdPrizePool();
-        vm.deal(address(pool), 10 ether);
-        pool.totalPool(); // just to avoid unused warning
+        pool = new FlappyBirdPrizePool(address(usdc));
+        
+        // Mint USDC to pool for testing (10 USDC with 6 decimals = 10000000)
+        usdc.mint(address(pool), 10_000_000);
     }
 
     function testAllocateFunds() public {
@@ -29,14 +36,14 @@ contract FlappyBirdPrizePoolTest is Test {
         percentages[1] = 3000; // 30%
         percentages[2] = 2000; // 20%
         uint256 feePercentage = 1000; // 10%
-        // Set totalPool directly via cheatcode (slot 1: after owner)
-        bytes32 slot = bytes32(uint256(1));
-        vm.store(address(pool), slot, bytes32(uint256(10 ether)));
+        // Set totalPool directly via cheatcode (slot 2: after owner and usdc)
+        bytes32 slot = bytes32(uint256(2));
+        vm.store(address(pool), slot, bytes32(uint256(10_000_000))); // 10 USDC
         pool.allocateFunds(feePercentage, winners, percentages);
-        assertEq(pool.rewards(winner1), 4 ether);
-        assertEq(pool.rewards(winner2), 3 ether);
-        assertEq(pool.rewards(winner3), 2 ether);
-        assertEq(pool.rewards(owner), 1 ether);
+        assertEq(pool.rewards(winner1), 4_000_000); // 4 USDC
+        assertEq(pool.rewards(winner2), 3_000_000); // 3 USDC
+        assertEq(pool.rewards(winner3), 2_000_000); // 2 USDC
+        assertEq(pool.rewards(owner), 1_000_000); // 1 USDC
         vm.stopPrank();
     }
 
@@ -100,28 +107,59 @@ contract FlappyBirdPrizePoolTest is Test {
         uint256[] memory percentages = new uint256[](1);
         percentages[0] = 10000; // 100%
         uint256 feePercentage = 0; // 0%
-        // Set totalPool directly via cheatcode (slot 1: after owner)
-        bytes32 slot = bytes32(uint256(1));
-        // print value of totalPool
-        console.log("totalPool:", pool.totalPool());
-        vm.store(address(pool), slot, bytes32(uint256(5 ether)));
-        console.log("totalPool:", pool.totalPool());
+        // Set totalPool directly via cheatcode (slot 2: after owner and usdc)
+        bytes32 slot = bytes32(uint256(2));
+        vm.store(address(pool), slot, bytes32(uint256(5_000_000))); // 5 USDC
         pool.allocateFunds(feePercentage, winners, percentages);
         vm.stopPrank();
 
-        uint256 initialBalance = address(winner1).balance;
+        uint256 initialBalance = usdc.balanceOf(winner1);
         vm.prank(winner1);
         pool.claimReward();
-        assertEq(address(winner1).balance, initialBalance + 5 ether);
+        assertEq(usdc.balanceOf(winner1), initialBalance + 5_000_000); // 5 USDC
     }
 
-    //test pool receives usdc.
-    function testReceiveFunds() public {
+    // Test pool receives USDC via payToPlay
+    function testPayToPlay() public {
+        address player = address(0x5);
+        usdc.mint(player, 20000); // 0.02 USDC
+        
+        vm.startPrank(player);
+        usdc.approve(address(pool), 20000);
+        pool.payToPlay();
+        vm.stopPrank();
+        
+        assertEq(pool.totalPool(), 20000); // 0.02 USDC
+        assertEq(usdc.balanceOf(address(pool)), 10_000_000 + 20000);
+    }
+    
+    // Test pool receives USDC via donate
+    function testDonate() public {
+        address donor = address(0x6);
+        uint256 donationAmount = 1_000_000; // 1 USDC
+        usdc.mint(donor, donationAmount);
+        
+        vm.startPrank(donor);
+        usdc.approve(address(pool), donationAmount);
+        pool.donate(donationAmount);
+        vm.stopPrank();
+        
+        assertEq(pool.totalPool(), donationAmount);
+        assertEq(usdc.balanceOf(address(pool)), 10_000_000 + donationAmount);
+    }
+    
+    // Test pool can still receive ETH and owner can withdraw it
+    function testReceiveAndWithdrawETH() public {
         uint256 initialBalance = address(pool).balance;
         vm.deal(address(this), 1 ether);
         (bool sent, ) = address(pool).call{value: 1 ether}("");
         require(sent, "Failed to send Ether");
         assertEq(address(pool).balance, initialBalance + 1 ether);
+        
+        // Owner withdraws ETH
+        vm.prank(owner);
+        pool.withdrawETH();
+        assertEq(address(pool).balance, 0);
     }
    
 }
