@@ -10,11 +10,11 @@ const NUMBER_OF_WINNERS = 3; // Number of winners to allocate funds to
 const FEE_PERCENTAGE = 1000; // 10% fee (in basis points, 10000 = 100%)
 
 // Contract addresses
-const FLAPPY_BIRD_CONTRACT_ADDRESS = 'YOUR_DEPLOYED_CONTRACT_ADDRESS'; // TODO: Replace with deployed contract
-const USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'; // USDC on Base network
+const FLAPPY_BIRD_CONTRACT_ADDRESS = '0xDD0BbF48f85f5314C3754cd63103Be927B55986C'; // sepolia deployed contract
+const USDC_ADDRESS = '0x036CbD53842c5426634e7929541eC2318f3dCF7e'; // USDC on Base Sepolia
 
 // Base network RPC
-const BASE_RPC_URL = 'https://mainnet.base.org';
+const BASE_RPC_URL = 'https://sepolia.base.org';
 
 // Private key of the contract owner (KEEP THIS SECURE!)
 const OWNER_PRIVATE_KEY = process.env.OWNER_PRIVATE_KEY || 'YOUR_PRIVATE_KEY'; // TODO: Set as environment variable
