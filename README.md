@@ -54,6 +54,10 @@ run command:
 python3 -m http.server 8000
 
 
+### Base Sepolia contract:
+https://sepolia.basescan.org/address/0xdd0bbf48f85f5314c3754cd63103be927b55986c
+address: 0xdd0bbf48f85f5314c3754cd63103be927b55986c
+
 
 Order of deployment:
 1. smart-contract
