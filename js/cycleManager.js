@@ -274,37 +274,56 @@ async function allocateFundsToWinners() {
 
 // ===== DATABASE RESET =====
 
+// Helper function to format date as dd-mm-yyyy
+function formatDate(timestamp) {
+    const date = new Date(timestamp);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+}
 
-// TODO: Archive previous cycle data before resetting. Currently, this just deletes scores.
-// You might want to store them in a separate collection for historical records.
 async function resetDatabase() {
     try {
         console.log('Resetting database...');
         
-        // Archive current cycle data
-        const archiveRef = db.collection('cycleArchive').doc(`cycle_${cycleStartTime}`);
+        // Format dates for archive collection name
+        const startDateStr = formatDate(cycleStartTime);
+        const endDateStr = formatDate(cycleEndTime);
+        const archiveCollectionName = `scores_${startDateStr}_to_${endDateStr}`;
+        
+        console.log(`Archiving to collection: ${archiveCollectionName}`);
+        
+        // Get all current scores
         const scoresSnapshot = await db.collection('scores').get();
         
-        const scores = [];
-        scoresSnapshot.forEach(doc => {
-            scores.push(doc.data());
-        });
+        if (scoresSnapshot.empty) {
+            console.log('No scores to archive.');
+        } else {
+            // Copy all scores to the archive collection
+            const batch = db.batch();
+            scoresSnapshot.forEach(doc => {
+                const archiveDocRef = db.collection(archiveCollectionName).doc(doc.id);
+                batch.set(archiveDocRef, {
+                    ...doc.data(),
+                    archivedAt: Date.now(),
+                    cycleStart: cycleStartTime,
+                    cycleEnd: cycleEndTime
+                });
+            });
+            await batch.commit();
+            console.log(`Archived ${scoresSnapshot.size} scores to ${archiveCollectionName}`);
+            
+            // Delete all scores from the main collection
+            const deleteBatch = db.batch();
+            scoresSnapshot.forEach(doc => {
+                deleteBatch.delete(doc.ref);
+            });
+            await deleteBatch.commit();
+            console.log('Main scores collection cleared.');
+        }
         
-        await archiveRef.set({
-            startTime: cycleStartTime,
-            endTime: cycleEndTime,
-            scores: scores,
-            archivedAt: Date.now()
-        });
-        
-        // Delete all scores
-        const batch = db.batch();
-        scoresSnapshot.forEach(doc => {
-            batch.delete(doc.ref);
-        });
-        await batch.commit();
-        
-        console.log('Database reset complete. Scores archived.');
+        console.log('Database reset complete. Ready for new cycle.');
     } catch (error) {
         console.error('Error resetting database:', error);
     }
