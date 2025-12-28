@@ -31,3 +31,6 @@ lib/
 # Python
 __pycache__/
 *.pyc
+
+#firebase admin sdk private key
+flappy-bird-leaderboard-463e0-firebase-adminsdk-fbsvc-cc61f9cd02.json

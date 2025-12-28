@@ -3,30 +3,62 @@
 
 const { Web3 } = require('web3');
 const admin = require('firebase-admin');
+require('dotenv').config();
 
 // ===== CONFIGURATION =====
-const CYCLE_DURATION_DAYS = 7; // Number of days for each cycle
-const NUMBER_OF_WINNERS = 3; // Number of winners to allocate funds to
-const FEE_PERCENTAGE = 1000; // 10% fee (in basis points, 10000 = 100%)
+const NODE_ENV = process.env.NODE_ENV || 'development';
+const CYCLE_DURATION_DAYS = parseFloat(process.env.CYCLE_DURATION_DAYS) || (NODE_ENV === 'development' ? 0.00069 : 7); // 1 min for dev, 7 days for prod
+const NUMBER_OF_WINNERS = parseInt(process.env.NUMBER_OF_WINNERS) || 3; // Number of winners to allocate funds to
+const FEE_PERCENTAGE = parseInt(process.env.FEE_PERCENTAGE) || 1000; // 10% fee (in basis points, 10000 = 100%)
 
 // Contract addresses
-const FLAPPY_BIRD_CONTRACT_ADDRESS = '0xDD0BbF48f85f5314C3754cd63103Be927B55986C'; // sepolia deployed contract
+const FLAPPY_BIRD_CONTRACT_ADDRESS = process.env.FLAPPY_BIRD_CONTRACT_ADDRESS || '0xDD0BbF48f85f5314C3754cd63103Be927B55986C'; // Set via environment variable
 const USDC_ADDRESS = '0x036CbD53842c5426634e7929541eC2318f3dCF7e'; // USDC on Base Sepolia
 
 // Base network RPC
-const BASE_RPC_URL = 'https://sepolia.base.org';
+const BASE_RPC_URL = process.env.BASE_RPC_URL || 'https://sepolia.base.org';
 
 // Private key of the contract owner (KEEP THIS SECURE!)
-const OWNER_PRIVATE_KEY = process.env.OWNER_PRIVATE_KEY || 'YOUR_PRIVATE_KEY'; // TODO: Set as environment variable
+const OWNER_PRIVATE_KEY = process.env.OWNER_PRIVATE_KEY;
+
+if (!OWNER_PRIVATE_KEY) {
+    console.error('ERROR: OWNER_PRIVATE_KEY environment variable is required!');
+    process.exit(1);
+}
 
 // ===== INITIALIZE SERVICES =====
 
 // Initialize Firebase Admin
-admin.initializeApp({
-    credential: admin.credential.applicationDefault(),
-    // If you have a service account key file:
-    // credential: admin.credential.cert('./serviceAccountKey.json'),
-});
+const serviceAccountPath = process.env.GOOGLE_APPLICATION_CREDENTIALS || './serviceAccountKey.json';
+
+try {
+    if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+        // Production: Use service account file from Render secret file
+        admin.initializeApp({
+            credential: admin.credential.cert(serviceAccountPath),
+        });
+        console.log('Firebase initialized with service account from:', serviceAccountPath);
+    } else {
+        // Local development: Try application default credentials or local file
+        try {
+            admin.initializeApp({
+                credential: admin.credential.cert(serviceAccountPath),
+            });
+            console.log('Firebase initialized with local service account');
+        } catch (error) {
+            // Fallback to application default credentials
+            admin.initializeApp({
+                credential: admin.credential.applicationDefault(),
+            });
+            console.log('Firebase initialized with application default credentials');
+        }
+    }
+} catch (error) {
+    console.error('Failed to initialize Firebase:', error.message);
+    console.error('Please ensure GOOGLE_APPLICATION_CREDENTIALS is set or serviceAccountKey.json exists');
+    process.exit(1);
+}
+
 const db = admin.firestore();
 
 // Initialize Web3
