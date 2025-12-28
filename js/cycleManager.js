@@ -114,20 +114,52 @@ async function initializeCycleState() {
             console.log('Cycle ends:', new Date(cycleEndTime));
         } else {
             // First time running - create new cycle
+            console.log('No existing cycle found. Creating initial cycle...');
             await saveCycleState();
             console.log('Created new cycle');
+            console.log('Cycle ends:', new Date(cycleEndTime));
         }
     } catch (error) {
-        console.error('Error initializing cycle state:', error);
+        if (error.code === 5 || error.code === 'NOT_FOUND') {
+            // Firestore database or collection doesn't exist yet - create it
+            console.log('Firestore collection not found. Initializing database...');
+            await saveCycleState();
+            console.log('Database initialized with new cycle');
+            console.log('Cycle ends:', new Date(cycleEndTime));
+        } else {
+            console.error('Error initializing cycle state:', error);
+            throw error;
+        }
     }
 }
 
 async function saveCycleState() {
-    await db.collection('cycleState').doc('current').set({
-        startTime: cycleStartTime,
-        endTime: cycleEndTime,
-        lastUpdated: Date.now()
-    });
+    try {
+        await db.collection('cycleState').doc('current').set({
+            startTime: cycleStartTime,
+            endTime: cycleEndTime,
+            lastUpdated: Date.now()
+        });
+    } catch (error) {
+        if (error.code === 5 || error.code === 'NOT_FOUND') {
+            console.error('\n❌ FIRESTORE DATABASE NOT FOUND!');
+            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.error('You need to create a Firestore database first:');
+            console.error('');
+            console.error('1. Go to https://console.firebase.google.com/');
+            console.error('2. Select your project');
+            console.error('3. Click "Firestore Database" in the left menu');
+            console.error('4. Click "Create database"');
+            console.error('5. Choose "Start in production mode" (or test mode)');
+            console.error('6. Select a location (choose one close to you)');
+            console.error('7. Click "Enable"');
+            console.error('');
+            console.error('After creating the database, run this script again.');
+            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+            process.exit(1);
+        }
+        throw error;
+    }
 }
 
 // ===== WINNER RETRIEVAL =====
