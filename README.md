@@ -65,6 +65,17 @@ Order of deployment:
 3. deploy database and game
 
 
+HOW TO ENCRYPT PRIVATE KEYS?
+1. FOUNDRY
+2. AWS secrets manager
+
+WHAT YOU PRACTICE IN DEV, YOU WILL DO IN PROD.
+
+
+PRACTICE ANVIL
+
+FORK -> DEV and PROD
+
 ### FileStructure
 
 x402-flappy-bird/
