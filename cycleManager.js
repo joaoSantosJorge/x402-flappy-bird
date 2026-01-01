@@ -18,11 +18,44 @@ const USDC_ADDRESS = '0x036CbD53842c5426634e7929541eC2318f3dCF7e'; // USDC on Ba
 // Base network RPC
 const BASE_RPC_URL = process.env.BASE_RPC_URL || 'https://sepolia.base.org';
 
-// Private key of the contract owner (KEEP THIS SECURE!)
-const OWNER_PRIVATE_KEY = process.env.OWNER_PRIVATE_KEY;
+// Private key handling - supports both encrypted keystore and plain private key
+const OWNER_PRIVATE_KEY = process.env.OWNER_PRIVATE_KEY; // Optional: plain private key (not recommended)
+const KEYSTORE_PATH = process.env.KEYSTORE_PATH; // Path to encrypted keystore file
+const KEYSTORE_PASSWORD = process.env.KEYSTORE_PASSWORD; // Password to decrypt keystore
 
-if (!OWNER_PRIVATE_KEY) {
-    console.error('ERROR: OWNER_PRIVATE_KEY environment variable is required!');
+// Function to load private key from encrypted keystore
+async function loadPrivateKey() {
+    // Method 1: Use encrypted keystore (recommended)
+    if (KEYSTORE_PATH && KEYSTORE_PASSWORD) {
+        try {
+            const fs = require('fs');
+            const { ethers } = require('ethers');
+            
+            const keystoreContent = fs.readFileSync(KEYSTORE_PATH, 'utf8');
+            
+            // Use ethers.js to decrypt Foundry keystores (they don't include the 'address' field)
+            const wallet = await ethers.Wallet.fromEncryptedJson(keystoreContent, KEYSTORE_PASSWORD);
+            console.log('✓ Successfully decrypted keystore');
+            console.log('✓ Loaded address:', wallet.address);
+            
+            return wallet.privateKey;
+        } catch (error) {
+            console.error('ERROR: Failed to decrypt keystore:', error.message);
+            process.exit(1);
+        }
+    }
+    
+    // Method 2: Use plain private key (fallback for development)
+    if (OWNER_PRIVATE_KEY) {
+        console.warn('⚠️  Using plain private key from environment variable (not recommended for production)');
+        return OWNER_PRIVATE_KEY;
+    }
+    
+    // No key provided
+    console.error('ERROR: No private key configuration found!');
+    console.error('Please provide either:');
+    console.error('  - KEYSTORE_PATH and KEYSTORE_PASSWORD (recommended), or');
+    console.error('  - OWNER_PRIVATE_KEY (not recommended for production)');
     process.exit(1);
 }
 
@@ -63,8 +96,9 @@ const db = admin.firestore();
 
 // Initialize Web3
 const web3 = new Web3(BASE_RPC_URL);
-const account = web3.eth.accounts.privateKeyToAccount(OWNER_PRIVATE_KEY);
-web3.eth.accounts.wallet.add(account);
+
+// Account will be initialized in main() after loading the private key
+let account;
 
 // FlappyBirdPrizePool contract ABI (only the functions we need)
 const contractABI = [
@@ -440,6 +474,13 @@ async function checkAndProcessCycle() {
 
 async function main() {
     console.log('=== Flappy Bird Cycle Manager Started ===');
+    
+    // Load and decrypt private key
+    const privateKey = await loadPrivateKey();
+    account = web3.eth.accounts.privateKeyToAccount(privateKey);
+    web3.eth.accounts.wallet.add(account);
+    console.log('✓ Wallet initialized');
+    
     console.log('Cycle duration:', CYCLE_DURATION_DAYS, 'days');
     console.log('Number of winners:', NUMBER_OF_WINNERS);
     console.log('Fee percentage:', FEE_PERCENTAGE / 100, '%');

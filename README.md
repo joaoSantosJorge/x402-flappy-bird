@@ -70,12 +70,14 @@ Order of deployment:
 2. deploy front end in firebase
 3. test
 4. iterate
+5. readme with correct instructions
 
 WHAT YOU PRACTICE IN DEV, YOU WILL DO IN PROD.
 
 
 ### FileStructure
 
+```
 x402-flappy-bird/
 │
 ├── 📁 frontend/                    # Firebase Hosting (public files)
@@ -119,3 +121,4 @@ x402-flappy-bird/
 ├── package.json                    # Root package.json
 ├── README.md
 └── deploy-testnet.sh
+```
