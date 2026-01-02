@@ -12,6 +12,10 @@ firebase-debug.log
 .env
 .env.local
 
+# Secret keys and credentials
+serviceAccountKey.json
+render-secrets/
+
 # Build and output
 out/
 dist/
