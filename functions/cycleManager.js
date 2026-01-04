@@ -10,13 +10,15 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
-// Get configuration from Firebase environment
-const config = functions.config();
-const CYCLE_DURATION_DAYS = parseFloat(config.contract?.cycle_days || "7");
-const NUMBER_OF_WINNERS = parseInt(config.contract?.winners || "3");
-const FEE_PERCENTAGE = parseInt(config.contract?.fee || "1000");
-const FLAPPY_BIRD_CONTRACT_ADDRESS = config.contract?.address;
-const BASE_RPC_URL = config.network?.rpc_url || "https://sepolia.base.org";
+// Get configuration from environment variables (new Firebase approach)
+// These are set using Firebase Functions secrets or environment config
+const KEYSTORE_BASE64 = process.env.KEYSTORE_DATA;
+const KEYSTORE_PASSWORD = process.env.KEYSTORE_PASSWORD;
+const CYCLE_DURATION_DAYS = parseFloat(process.env.CYCLE_DURATION_DAYS || "7");
+const NUMBER_OF_WINNERS = parseInt(process.env.NUMBER_OF_WINNERS || "3");
+const FEE_PERCENTAGE = parseInt(process.env.FEE_PERCENTAGE || "1000");
+const FLAPPY_BIRD_CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS;
+const BASE_RPC_URL = process.env.BASE_RPC_URL || "https://sepolia.base.org";
 
 // Initialize Web3
 const web3 = new Web3(BASE_RPC_URL);
@@ -53,18 +55,15 @@ const contractABI = [
 // Decrypt keystore from base64
 async function loadPrivateKey() {
   try {
-    const keystoreBase64 = config.keystore?.data;
-    const keystorePassword = config.keystore?.password;
-
-    if (!keystoreBase64 || !keystorePassword) {
+    if (!KEYSTORE_BASE64 || !KEYSTORE_PASSWORD) {
       throw new Error("Keystore configuration missing");
     }
 
     // Decode base64 to JSON
-    const keystoreJson = Buffer.from(keystoreBase64, "base64").toString("utf8");
+    const keystoreJson = Buffer.from(KEYSTORE_BASE64, "base64").toString("utf8");
 
     // Decrypt using ethers
-    const wallet = await ethers.Wallet.fromEncryptedJson(keystoreJson, keystorePassword);
+    const wallet = await ethers.Wallet.fromEncryptedJson(keystoreJson, KEYSTORE_PASSWORD);
 
     console.log("✓ Keystore decrypted successfully");
     console.log("✓ Wallet address:", wallet.address);

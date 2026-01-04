@@ -46,81 +46,89 @@ When prompted:
 
 ## Step 2: Prepare Your Keystore
 
-### Option A: Use Keystore File (Recommended for Security)
-
-Your encrypted keystore needs to be stored securely in Firebase. We'll use Firebase environment configuration.
+Your encrypted Foundry keystore needs to be encoded as base64 for Firebase deployment.
 
 1. **Export your keystore as base64**:
 ```bash
 # Navigate to your keystore location
 cd ~/.foundry/keystores/
 
-# Encode your keystore to base64 (one line)
+# Encode your keystore to base64 (single line, no wrapping)
 base64 -w 0 <your-keystore-name> > keystore-base64.txt
 
 # Display the encoded keystore
 cat keystore-base64.txt
 ```
 
-2. **Save this base64 string** - you'll need it in Step 4.
+2. **Copy the output** - you'll need this for the next step.
 
-### Option B: Use Plain Private Key (Not Recommended)
-
-If you prefer to use a plain private key for testing:
-```bash
-cast wallet private-key <your-keystore-name>
-```
-Enter your password when prompted. **Do NOT use this method in production.**
+**Note**: Keep your keystore password handy (the one you used with `cast wallet import`).
 
 ## Step 3: Firebase Functions Structure
 
-The Firebase Functions have been created in the `/functions` directory:
+The Firebase Functions are located in the `/functions` directory:
 
-- `functions/cycleManager.js` - Main cycle manager logic
-- `functions/index.js` - Entry point that exports the functions
-- `functions/package.json` - Dependencies configuration
+- `cycleManager.js` - Main cycle manager logic with scheduled and HTTP functions
+- `index.js` - Entry point that exports the Cloud Functions
+- `package.json` - Dependencies (web3, ethers, firebase-admin, firebase-functions)
+- `.env.local` - Local development environment variables (not committed)
+- `.env` - Production environment variables (not committed)
 
 **Key differences from standalone version**:
-- Uses scheduled triggers instead of continuous loop
-- Keystore decrypted from base64 environment variable
-- Separated into scheduled and HTTP callable functions
-- Uses Firebase Functions config instead of environment variables
+- Uses scheduled triggers (hourly) instead of continuous loop
+- Keystore decrypted from base64 stored in environment variables
+- Three exported functions: scheduled check, manual trigger, force allocation
+- Uses modern `.env` files instead of deprecated `functions.config()`
 
-## Step 4: Configure Firebase Environment Variables
+## Step 4: Configure Environment Variables
 
-Set environment variables in Firebase:
+Firebase Functions now uses `.env` files for configuration (the old `functions.config()` method is deprecated).
+
+### For Local Testing:
+
+Edit `functions/.env.local`:
 
 ```bash
-# Set keystore configuration (base64 encoded)
-firebase functions:config:set \
-  keystore.data="<your-base64-encoded-keystore>" \
-  keystore.password="<your-keystore-password>"
-
-# Set contract configuration
-firebase functions:config:set \
-  contract.address="<your-contract-address>" \
-  contract.cycle_days="7" \
-  contract.winners="3" \
-  contract.fee="1000"
-
-# Set network configuration
-firebase functions:config:set \
-  network.rpc_url="https://sepolia.base.org" \
-  network.name="base-sepolia"
-
-# Set environment
-firebase functions:config:set env="production"
+cd functions
+nano .env.local
 ```
 
-**For local testing**, a `.runtimeconfig.json` file has been created in the `functions/` directory. Update it with your actual values:
+Replace the placeholder values:
 
-- Replace `YOUR_BASE64_ENCODED_KEYSTORE_HERE` with your keystore
-- Replace `YOUR_KEYSTORE_PASSWORD_HERE` with your password
-- Update contract address if needed
+```env
+# Keystore configuration
+KEYSTORE_DATA=<paste-your-base64-keystore-here>
+KEYSTORE_PASSWORD=<your-keystore-password>
 
-## Step 5: Verify Functions Setup
+# Contract configuration
+CONTRACT_ADDRESS=0xYourContractAddress
+CYCLE_DURATION_DAYS=0.00069  # 1 minute for local testing
+NUMBER_OF_WINNERS=3
+FEE_PERCENTAGE=1000
 
-The Firebase Functions have already been created and configured. Verify the setup:
+# Network configuration
+BASE_RPC_URL=https://sepolia.base.org
+```
+
+### For Production:
+
+Edit `functions/.env`:
+
+```bash
+cd functions
+nano .env
+```
+
+Same as above, but change:
+```env
+CYCLE_DURATION_DAYS=7  # 7 days for production
+```
+
+**Important**: Both `.env` and `.env.local` are in `.gitignore` and will NOT be committed to your repository.
+
+## Step 5: Install Dependencies and Verify
+
+Install dependencies and verify your setup:
 
 ```bash
 cd functions
@@ -128,21 +136,30 @@ npm install
 npm run lint
 ```
 
-All files are located in the `/functions` directory:
-- `cycleManager.js` - Main implementation with all cycle logic
-- `index.js` - Exports the three Cloud Functions
-- `package.json` - Dependencies already configured
-- `.runtimeconfig.json` - Local testing configuration
+If lint passes without errors, your code is ready to deploy!
 
 ## Step 6: Deploy to Firebase
 
-```bash
-# From project root
-firebase deploy --only functions
+Deploy your functions to Firebase:
 
-# Or deploy specific functions
+```bash
+# From project root (ensure you're in /home/joaosantosjorge/x402-flappy-bird)
+firebase deploy --only functions
+```
+
+This will:
+1. Upload your code to Firebase
+2. Load environment variables from `functions/.env`
+3. Deploy all three Cloud Functions
+4. Set up the hourly scheduled trigger
+
+**First-time deployment**: You may be prompted to enable Cloud Scheduler API. Accept to enable it (still free tier).
+
+You can also deploy individual functions:
+```bash
 firebase deploy --only functions:checkCycleScheduled
 firebase deploy --only functions:checkCycleManual
+firebase deploy --only functions:forceAllocate
 ```
 
 ## Step 7: Test Your Deployment
@@ -220,14 +237,16 @@ Your usage (hourly checks):
 ## Troubleshooting
 
 ### Error: "Keystore configuration missing"
-- Run `firebase functions:config:get` to verify config is set
-- Ensure you deployed after setting config
-- Check `.runtimeconfig.json` for local testing
+- Verify `functions/.env` exists and has correct values
+- Check that `KEYSTORE_DATA` and `KEYSTORE_PASSWORD` are set
+- Ensure you're deploying from the correct directory
+- Try re-deploying: `firebase deploy --only functions`
 
 ### Error: "Failed to decrypt keystore"
-- Verify base64 encoding is correct (no line breaks)
-- Check password is correct
-- Test keystore decryption locally first
+- Verify base64 encoding is correct (use `base64 -w 0`, no line breaks)
+- Check that the password matches your keystore
+- Ensure the base64 string is complete (no truncation)
+- Test locally first with `npm run serve`
 
 ### Function timeout
 - Default timeout is 60 seconds
@@ -240,29 +259,43 @@ Your usage (hourly checks):
 
 ## Local Testing
 
-Test functions locally before deploying:
+Test your functions locally before deploying to production:
 
 ```bash
-# Start Firebase emulator
+# From project root
+cd functions
+
+# Start Firebase emulator (uses .env.local)
+npm run serve
+# or
 firebase emulators:start --only functions
 
-# In another terminal, trigger function
-curl http://localhost:5001/YOUR-PROJECT/us-central1/checkCycleManual
+# In another terminal, test the manual trigger
+curl http://localhost:5001/flappy-bird-leaderboard-463e0/us-central1/checkCycleManual
 ```
+
+The emulator will:
+- Load environment variables from `.env.local`
+- Run your functions locally
+- Show logs in the terminal
+- Allow testing without deploying
 
 ## Production Checklist
 
-- [ ] Base64-encoded keystore uploaded to Firebase config
-- [ ] Keystore password set in Firebase config
+- [ ] Base64-encoded keystore in `functions/.env`
+- [ ] Keystore password in `functions/.env`
 - [ ] Contract address configured correctly
-- [ ] Cycle duration set to 7 days
-- [ ] Tested on testnet first
-- [ ] Scheduled function deployed successfully
-- [ ] Manual trigger function tested
-- [ ] Logs monitored for first few cycles
-- [ ] Firestore database has proper indexes
-- [ ] Backed up keystore file securely
-- [ ] Documented keystore password securely
+- [ ] Cycle duration set to 7 days (not 0.00069)
+- [ ] Tested locally with emulator first
+- [ ] `.env` and `.env.local` NOT committed to git
+- [ ] Deployed successfully: `firebase deploy --only functions`
+- [ ] Verified deployment in Firebase Console
+- [ ] Tested manual trigger endpoint
+- [ ] Checked Cloud Scheduler is active
+- [ ] Monitored logs for first cycle
+- [ ] Firestore database indexes created if needed
+- [ ] Backed up keystore file securely offline
+- [ ] Documented keystore password in password manager
 
 ## Migrating from Render
 
