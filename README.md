@@ -75,50 +75,56 @@ Order of deployment:
 WHAT YOU PRACTICE IN DEV, YOU WILL DO IN PROD.
 
 
-### FileStructure
+### File Structure
 
 ```
-x402-flappy-bird/
+x402-flappy-bird/                   # MONOREPO (everything together)
 │
-├── 📁 frontend/                    # Firebase Hosting (public files)
+├── 📁 contracts/                   # Smart Contracts Layer
+│   ├── FlappyBirdPrizePool.sol
+│   └── interfaces/
+│
+├── 📁 functions/                   # Backend Layer (Firebase Cloud Functions)
+│   ├── index.js                    # Entry point
+│   ├── cycleManager.js             # Cycle management logic
+│   ├── package.json
+│   ├── .env                        # Production config (not committed)
+│   └── .env.local                  # Local config (not committed)
+│
+├── 📁 frontend/                    # Frontend Layer (Firebase Hosting)
 │   ├── index.html
 │   ├── css/
 │   │   └── styles.css
 │   ├── js/
-│   │   ├── game.js              # Game logic
-│   │   ├── leaderboard.js       # Leaderboard display
-│   │   └── payments.js          # Wallet & payments
-│   └── assets/                   # Images, sounds, etc.
+│   │   ├── game.js                 # Game logic
+│   │   ├── leaderboard.js          # Leaderboard display
+│   │   └── payments.js             # Wallet & USDC payments
+│   └── assets/                     # Images, sounds, etc.
 │
-├── 📁 functions/                   # Firebase Cloud Functions (or keep separate for Render)
-│   ├── index.js                 # Cloud Function entry (or cycleManager.js)
-│   ├── package.json
-│   └── .env.example
+├── 📁 script/                      # Deployment Scripts
+│   └── Deploy.s.sol                # Foundry deployment
 │
-├── 📁 contracts/                   # Smart contracts (Solidity)
-│   └── FlappyBirdPrizePool.sol
-│
-├── 📁 test/                        # Contract & function tests
-│   ├── FlappyBirdPrizePool.t.sol
-│   ├── MockUSDC.sol
-│   └── payments.test.js
-│
-├── 📁 script/                      # Deployment scripts
-│   └── Deploy.s.sol
+├── 📁 test/                        # Tests (all layers)
+│   ├── FlappyBirdPrizePool.t.sol   # Contract tests
+│   ├── MockUSDC.sol                # Test helpers
+│   └── cycleManager.test.js        # Backend tests
 │
 ├── 📁 docs/                        # Documentation
 │   ├── FIREBASE_SETUP.md
-│   └── DEPLOYMENT.md
+│   ├── FIREBASE_CYCLE_MANAGER_DEPLOYMENT.md
+│   └── SECRET_KEY_MANAGEMENT.md
 │
-├── 📁 config/                      # Configuration files
-│   ├── firebase.json
-│   ├── firestore.rules
-│   ├── firestore.indexes.json
-│   └── foundry.toml
-│
-├── .env.example                    # Environment template
-├── .gitignore
-├── package.json                    # Root package.json
-├── README.md
-└── deploy-testnet.sh
+├── 📄 firebase.json                # Firebase config
+├── 📄 firestore.rules              # Database security rules
+├── 📄 firestore.indexes.json       # Database indexes
+├── 📄 foundry.toml                 # Contract framework config
+├── 📄 .env                         # Root env (for contract deployment)
+├── 📄 .gitignore                   # Git ignore (protects secrets)
+├── 📄 package.json                 # Root dependencies
+└── 📄 README.md                    # This file
 ```
+
+**Architecture**: Monorepo with clear separation of concerns
+- Each folder is independent but shares configs
+- Single deployment pipeline via Firebase
+- Contract deployed separately via Foundry
