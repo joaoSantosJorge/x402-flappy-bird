@@ -128,3 +128,16 @@ x402-flappy-bird/                   # MONOREPO (everything together)
 - Each folder is independent but shares configs
 - Single deployment pipeline via Firebase
 - Contract deployed separately via Foundry
+
+
+# TODO for production
+how is an update done in my app?
+
+Would it be possible for a user to send a request updating his highest score without playing?
+
+For production, you should:
+
+Implement server-side verification via Cloud Functions
+Verify wallet signatures
+Add rate limiting
+Possibly add game state verification

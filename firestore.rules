@@ -1,6 +1,27 @@
 service cloud.firestore {
   match /databases/{database}/documents {
     
+    // Monthly leaderboards - anyone can read, anyone can write their own score
+    match /leaderboards/{monthKey}/scores/{userId} {
+      allow read: if true; // Anyone can view leaderboard
+      
+      // Allow creating a new score (first time submission for this userId)
+      // Basic validation: score must be a number between 0 and 10000
+      allow create: if request.resource.data.score is number 
+                    && request.resource.data.score >= 0 
+                    && request.resource.data.score <= 10000;
+      
+      // Allow updating ONLY if the new score is higher than the existing score
+      // This prevents score manipulation and ensures only improvements are recorded
+      allow update: if request.resource.data.score > resource.data.score
+                    && request.resource.data.score is number 
+                    && request.resource.data.score >= 0 
+                    && request.resource.data.score <= 10000;
+      
+      // Never allow deleting scores
+      allow delete: if false;
+    }
+    
     // Scores collection - anyone can read, only authenticated users can write their own score
     match /scores/{scoreId} {
       allow read: if true;

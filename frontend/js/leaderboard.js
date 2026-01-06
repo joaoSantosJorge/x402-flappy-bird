@@ -31,6 +31,12 @@ function getCurrentMonthKey() {
 // Submit score
 // If walletAddress is not provided, use a random guest ID for local testing
 async function submitScore(walletAddress, score) {
+    // Basic validation - prevent obviously fake scores
+    if (typeof score !== 'number' || score < 0 || score > 10000 || !Number.isInteger(score)) {
+        console.error('Invalid score:', score);
+        return;
+    }
+    
     const monthKey = getCurrentMonthKey();
     let userId = walletAddress;
     if (!userId) {

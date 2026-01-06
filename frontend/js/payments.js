@@ -55,7 +55,7 @@ async function payToPlay() {
     // Check if on Base Sepolia testnet (chain ID 84532)
     const chainId = await web3.eth.getChainId();
     if (chainId !== 84532) {
-        alert('Please switch to Base Sepolia testnet to make the payment');
+        console.log('Current chain ID:', chainId, 'Expected: 84532');
         // Try to switch for MetaMask
         if (window.ethereum) {
             try {
@@ -63,6 +63,8 @@ async function payToPlay() {
                     method: 'wallet_switchEthereumChain',
                     params: [{ chainId: '0x14a34' }], // Base Sepolia chain ID
                 });
+                // Network switched successfully, continue with payment
+                console.log('Successfully switched to Base Sepolia');
             } catch (switchError) {
                 // If network not added, add it
                 if (switchError.code === 4902) {
@@ -77,15 +79,22 @@ async function payToPlay() {
                                 blockExplorerUrls: ['https://sepolia.basescan.org'],
                             }],
                         });
+                        console.log('Successfully added and switched to Base Sepolia');
                     } catch (addError) {
                         console.error('Failed to add Base Sepolia network:', addError);
+                        alert('Failed to add Base Sepolia network. Please add it manually.');
+                        return;
                     }
                 } else {
                     console.error('Failed to switch to Base Sepolia network:', switchError);
+                    alert('Please switch to Base Sepolia testnet manually in your wallet');
+                    return;
                 }
             }
+        } else {
+            alert('Please switch to Base Sepolia testnet in your wallet');
+            return;
         }
-        return;
     }
 
     // Base Sepolia testnet addresses
