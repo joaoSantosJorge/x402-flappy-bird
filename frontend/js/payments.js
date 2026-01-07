@@ -22,6 +22,17 @@ function updateTriesDisplay() {
     if (triesInfo) {
         triesInfo.textContent = 'Tries Remaining: ' + triesRemaining;
     }
+    
+    // Disable start button if no tries remaining
+    const startBtn = document.getElementById('start-btn');
+    if (triesRemaining <= 0) {
+        hasPaid = false;
+        if (startBtn) {
+            startBtn.disabled = true;
+        }
+    } else if (hasPaid && startBtn) {
+        startBtn.disabled = false;
+    }
 }
 
 // Initialize MetaMask connection
@@ -141,7 +152,6 @@ async function payToPlay() {
         hasPaid = true;
         triesRemaining = 10; // Grant 10 tries per payment
         updateTriesDisplay();
-        document.getElementById('start-btn').disabled = false;
         alert('Payment successful! You have 10 tries to play.');
     } catch (error) {
         console.error('Payment failed:', error);

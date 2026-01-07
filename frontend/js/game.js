@@ -191,9 +191,18 @@ function showGameOver() {
     ctx.textAlign = 'left';
 
     // Submit score to leaderboard if connected
-    //if (typeof userAccount !== 'undefined' && userAccount && score > 0) {
-        submitScore(userAccount, score);
-    //}
+    if (typeof userAccount !== 'undefined' && userAccount && score > 0) {
+        submitScore(userAccount, score).then(() => {
+            // Refresh leaderboard after successful submission
+            if (typeof getLeaderboard === 'function') {
+                getLeaderboard();
+            }
+        }).catch(error => {
+            console.error('Failed to submit score:', error);
+        });
+    } else {
+        console.log('Score not submitted - wallet not connected or score is 0');
+    }
 }
 
 // Reset game
