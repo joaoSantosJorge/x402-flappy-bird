@@ -22,12 +22,24 @@ service cloud.firestore {
       allow delete: if false;
     }
     
-    // Scores collection - anyone can read, only authenticated users can write their own score
+    // Scores collection - anyone can read and write (with validation)
     match /scores/{scoreId} {
       allow read: if true;
-      allow create: if request.auth != null 
-                    && request.resource.data.walletAddress == request.auth.token.walletAddress;
-      allow update, delete: if false; // Scores are immutable once created
+      
+      // Allow creating a new score with basic validation
+      allow create: if request.resource.data.score is number 
+                    && request.resource.data.score >= 0 
+                    && request.resource.data.score <= 10000
+                    && request.resource.data.walletAddress is string;
+      
+      // Allow updating ONLY if the new score is higher than the existing score
+      allow update: if request.resource.data.score > resource.data.score
+                    && request.resource.data.score is number 
+                    && request.resource.data.score >= 0 
+                    && request.resource.data.score <= 10000;
+      
+      // Never allow deleting scores
+      allow delete: if false;
     }
     
     // Cycle state - anyone can read, only Cloud Functions can write

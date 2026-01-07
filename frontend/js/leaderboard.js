@@ -37,20 +37,31 @@ async function submitScore(walletAddress, score) {
         return;
     }
     
-    const monthKey = getCurrentMonthKey();
     let userId = walletAddress;
     if (!userId) {
         // Use a random guest ID for local testing
         userId = 'guest-' + Math.random().toString(36).substring(2, 10);
     }
-    const docRef = db.collection('leaderboards').doc(monthKey).collection('scores').doc(userId);
+    
+    // Save to 'scores' collection (used by cycleManager)
+    const docRef = db.collection('scores').doc(userId);
 
     try {
-        await docRef.set({
-            score: score,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-        console.log('Score submitted');
+        const currentData = await docRef.get();
+        const currentScore = currentData.exists ? currentData.data().score : 0;
+        
+        // Only update if new score is higher
+        if (score > currentScore) {
+            await docRef.set({
+                walletAddress: userId,
+                score: score,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                playerName: userId.startsWith('0x') ? userId.slice(0, 6) + '...' + userId.slice(-4) : userId
+            });
+            console.log('Score submitted:', score);
+        } else {
+            console.log('Score not updated (current score is higher):', currentScore);
+        }
     } catch (error) {
         console.error('Error submitting score:', error);
     }
@@ -58,8 +69,7 @@ async function submitScore(walletAddress, score) {
 
 // Get leaderboard
 async function getLeaderboard() {
-    const monthKey = getCurrentMonthKey();
-    const querySnapshot = await db.collection('leaderboards').doc(monthKey).collection('scores')
+    const querySnapshot = await db.collection('scores')
         .orderBy('score', 'desc')
         .limit(10)
         .get();
@@ -67,9 +77,16 @@ async function getLeaderboard() {
     const leaderboardList = document.getElementById('leaderboard-list');
     leaderboardList.innerHTML = '';
 
+    if (querySnapshot.empty) {
+        leaderboardList.innerHTML = '<li>No scores yet</li>';
+        return;
+    }
+
     querySnapshot.forEach((doc) => {
+        const data = doc.data();
         const li = document.createElement('li');
-        li.textContent = `${doc.id}: ${doc.data().score}`;
+        const displayName = data.playerName || doc.id;
+        li.textContent = `${displayName}: ${data.score}`;
         leaderboardList.appendChild(li);
     });
 }

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Leaderboard</title>
+</head>
+<body>
+    <h1>Test Leaderboard Submission</h1>
+    <div>
+        <input type="text" id="wallet" placeholder="Wallet Address (0x...)" value="0x1234567890123456789012345678901234567890">
+        <input type="number" id="score" placeholder="Score" value="10">
+        <button onclick="testSubmit()">Submit Score</button>
+    </div>
+    <div>
+        <button onclick="testGet()">Refresh Leaderboard</button>
+    </div>
+    <h2>Leaderboard</h2>
+    <ul id="leaderboard-list"></ul>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCprQvJl7-ZC-6QK4ct5tBngJzOgF33MpM",
+            authDomain: "flappy-bird-leaderboard-463e0.firebaseapp.com",
+            projectId: "flappy-bird-leaderboard-463e0",
+            storageBucket: "flappy-bird-leaderboard-463e0.firebasestorage.app",
+            messagingSenderId: "344067272312",
+            appId: "1:344067272312:web:5d4fc513df1df38a87c78d",
+            measurementId: "G-YM6Z2TPHG8"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        
+        async function testSubmit() {
+            const wallet = document.getElementById('wallet').value;
+            const score = parseInt(document.getElementById('score').value);
+            
+            console.log('Submitting:', wallet, score);
+            
+            const docRef = db.collection('scores').doc(wallet);
+            
+            try {
+                const currentData = await docRef.get();
+                const currentScore = currentData.exists ? currentData.data().score : 0;
+                
+                if (score > currentScore) {
+                    await docRef.set({
+                        walletAddress: wallet,
+                        score: score,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                        playerName: wallet.startsWith('0x') ? wallet.slice(0, 6) + '...' + wallet.slice(-4) : wallet
+                    });
+                    console.log('Score submitted:', score);
+                    alert('Score submitted: ' + score);
+                } else {
+                    console.log('Score not updated (current score is higher):', currentScore);
+                    alert('Score not updated (current: ' + currentScore + ')');
+                }
+                
+                testGet();
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error: ' + error.message);
+            }
+        }
+        
+        async function testGet() {
+            const querySnapshot = await db.collection('scores')
+                .orderBy('score', 'desc')
+                .limit(10)
+                .get();
+
+            const leaderboardList = document.getElementById('leaderboard-list');
+            leaderboardList.innerHTML = '';
+
+            if (querySnapshot.empty) {
+                leaderboardList.innerHTML = '<li>No scores yet</li>';
+                console.log('No scores found');
+                return;
+            }
+
+            console.log('Found scores:');
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                const li = document.createElement('li');
+                const displayName = data.playerName || doc.id;
+                li.textContent = `${displayName}: ${data.score}`;
+                leaderboardList.appendChild(li);
+                console.log('  -', displayName, data.score);
+            });
+        }
+        
+        // Load on page load
+        testGet();
+    </script>
+</body>
+</html>
