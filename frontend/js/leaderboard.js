@@ -29,7 +29,7 @@ function getCurrentMonthKey() {
 }
 
 // Submit score
-// If walletAddress is not provided, use a random guest ID for local testing
+// Calls Cloud Function for server-side validation
 async function submitScore(walletAddress, score) {
     // Basic validation - prevent obviously fake scores
     if (typeof score !== 'number' || score < 0 || score > 10000 || !Number.isInteger(score)) {
@@ -43,24 +43,27 @@ async function submitScore(walletAddress, score) {
         userId = 'guest-' + Math.random().toString(36).substring(2, 10);
     }
     
-    // Save to 'scores' collection (used by cycleManager)
-    const docRef = db.collection('scores').doc(userId);
-
     try {
-        const currentData = await docRef.get();
-        const currentScore = currentData.exists ? currentData.data().score : 0;
-        
-        // Only update if new score is higher
-        if (score > currentScore) {
-            await docRef.set({
+        // Call Cloud Function to submit score (server-side validation)
+        const response = await fetch('https://us-central1-flappy-bird-leaderboard-463e0.cloudfunctions.net/submitScore', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
                 walletAddress: userId,
                 score: score,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                playerName: userId.startsWith('0x') ? userId.slice(0, 6) + '...' + userId.slice(-4) : userId
-            });
-            console.log('Score submitted:', score);
+                // TODO: Add signature from wallet to prove ownership
+                signature: null
+            })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            console.log('Score submitted:', result.score);
         } else {
-            console.log('Score not updated (current score is higher):', currentScore);
+            console.log(result.message || 'Score submission failed');
         }
     } catch (error) {
         console.error('Error submitting score:', error);
