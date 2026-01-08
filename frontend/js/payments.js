@@ -6,6 +6,41 @@ let userAccount;
 let hasPaid = false; // Track if user has paid to play
 let triesRemaining = 0; // Track remaining tries (10 tries per payment)
 
+// Contract addresses
+const FLAPPY_BIRD_CONTRACT_ADDRESS = '0xdd0bbf48f85f5314c3754cd63103be927b55986c';
+const BASE_SEPOLIA_RPC = 'https://sepolia.base.org';
+
+// Update prize pool display
+async function updatePrizePool() {
+    try {
+        const poolDisplay = document.getElementById('pool-amount');
+        if (!poolDisplay) return;
+
+        // Create a Web3 instance for reading (doesn't require wallet connection)
+        const readWeb3 = new Web3(BASE_SEPOLIA_RPC);
+        
+        const contractABI = [
+            {
+                "inputs": [],
+                "name": "totalPool",
+                "outputs": [{"name": "", "type": "uint256"}],
+                "stateMutability": "view",
+                "type": "function"
+            }
+        ];
+        
+        const contract = new readWeb3.eth.Contract(contractABI, FLAPPY_BIRD_CONTRACT_ADDRESS);
+        const totalPool = await contract.methods.totalPool().call();
+        
+        // Convert from 6 decimals (USDC) to readable format
+        const poolUSDC = (parseInt(totalPool) / 1000000).toFixed(2);
+        poolDisplay.textContent = `$${poolUSDC}`;
+    } catch (error) {
+        console.error('Error fetching prize pool:', error);
+        document.getElementById('pool-amount').textContent = 'Error';
+    }
+}
+
 // Update wallet display
 function updateWalletDisplay() {
     const walletInfo = document.getElementById('wallet-info');
@@ -152,6 +187,10 @@ async function payToPlay() {
         hasPaid = true;
         triesRemaining = 10; // Grant 10 tries per payment
         updateTriesDisplay();
+        
+        // Update prize pool display after payment
+        await updatePrizePool();
+        
         alert('Payment successful! You have 10 tries to play.');
     } catch (error) {
         console.error('Payment failed:', error);
@@ -210,6 +249,17 @@ document.getElementById('connect-wallet-btn').addEventListener('click', async ()
         await initWalletConnect();
     } else if (walletType === 'coinbase') {
         await initCoinbase();
+    } else {
+        alert('Unknown wallet type. Please enter metamask, walletconnect, or coinbase.');
+    }
+});
+
+// Initialize prize pool display on page load
+window.addEventListener('load', () => {
+    updatePrizePool();
+    // Refresh prize pool every 30 seconds
+    setInterval(updatePrizePool, 30000);
+});
     } else {
         alert('Unknown wallet type. Please enter metamask, walletconnect, or coinbase.');
     }

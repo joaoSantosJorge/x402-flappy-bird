@@ -13,6 +13,9 @@ body {
     --leaderboard-border: #fff;
     --leaderboard-li-border: #fff3;
     --score-shadow: 0 0 2px #fff, 0 0 8px #fff4;
+    --pool-bg: #fff;
+    --pool-fg: #000;
+    --pool-border: #fff;
     font-family: 'Courier New', Courier, 'Lucida Console', monospace;
     display: flex;
     justify-content: center;
@@ -41,6 +44,9 @@ body.light-mode {
     --leaderboard-border: #000;
     --leaderboard-li-border: #0003;
     --score-shadow: 0 0 2px #000, 0 0 8px #0004;
+    --pool-bg: #000;
+    --pool-fg: #fff;
+    --pool-border: #000;
 }
 
 #game-container {
@@ -52,7 +58,7 @@ body.light-mode {
     box-shadow: 0 0 24px var(--shadow), 0 0 0 4px var(--bg);
     padding: 32px 32px 24px 32px;
     margin-top: 0;
-    padding-top: 48px;
+    padding-top: 60px;
     transition: background 0.3s, color 0.3s, border 0.3s;
 }
 
@@ -142,4 +148,42 @@ h2, #wallet-info {
     letter-spacing: 2px;
     margin-bottom: 8px;
     transition: color 0.3s, text-shadow 0.3s;
+}
+
+/* Prize Pool Display - Top Right Corner */
+#prize-pool-display {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: var(--pool-bg);
+    color: var(--pool-fg);
+    border: 2px solid var(--pool-border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    font-family: 'Courier New', Courier, 'Lucida Console', monospace;
+    text-align: center;
+    min-width: 100px;
+    z-index: 100;
+    transition: background 0.3s, color 0.3s, border 0.3s;
+}
+
+.pool-label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 2px;
+    font-weight: bold;
+    opacity: 0.8;
+}
+
+.pool-amount {
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+}
+
+.pool-amount::before {
+    content: '💰 ';
+    font-size: 12px;
 }
