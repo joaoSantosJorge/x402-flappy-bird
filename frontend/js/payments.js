@@ -67,6 +67,90 @@ function updateWalletDisplay() {
     } else {
         walletInfo.textContent = 'Wallet: Not connected';
     }
+    updateClaimButton();
+}
+
+// Update claim button state
+async function updateClaimButton() {
+    const claimBtn = document.getElementById('claim-reward-btn');
+    if (!claimBtn) return;
+    
+    if (!userAccount || !web3) {
+        claimBtn.disabled = true;
+        claimBtn.textContent = 'Claim Reward';
+        return;
+    }
+    
+    try {
+        // Check if user has rewards to claim
+        const contractABI = [
+            {
+                "inputs": [{"name": "", "type": "address"}],
+                "name": "rewards",
+                "outputs": [{"name": "", "type": "uint256"}],
+                "stateMutability": "view",
+                "type": "function"
+            }
+        ];
+        
+        const contract = new web3.eth.Contract(contractABI, FLAPPY_BIRD_CONTRACT_ADDRESS);
+        const reward = await contract.methods.rewards(userAccount).call();
+        const rewardUSDC = (parseInt(reward) / 1000000).toFixed(2);
+        
+        if (parseFloat(rewardUSDC) > 0) {
+            claimBtn.disabled = false;
+            claimBtn.textContent = `Claim $${rewardUSDC}`;
+        } else {
+            claimBtn.disabled = true;
+            claimBtn.textContent = 'No Reward';
+        }
+    } catch (error) {
+        console.error('Error checking rewards:', error);
+        claimBtn.disabled = true;
+        claimBtn.textContent = 'Claim Reward';
+    }
+}
+
+// Claim reward function
+async function claimReward() {
+    if (!web3 || !userAccount) {
+        alert('Please connect a wallet first');
+        return;
+    }
+    
+    const claimBtn = document.getElementById('claim-reward-btn');
+    const originalText = claimBtn.textContent;
+    
+    try {
+        claimBtn.disabled = true;
+        claimBtn.textContent = 'Claiming...';
+        
+        const contractABI = [
+            {
+                "inputs": [],
+                "name": "claimReward",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            }
+        ];
+        
+        const contract = new web3.eth.Contract(contractABI, FLAPPY_BIRD_CONTRACT_ADDRESS);
+        
+        console.log('Claiming reward...');
+        const tx = await contract.methods.claimReward().send({ from: userAccount });
+        
+        console.log('Reward claimed! Transaction:', tx.transactionHash);
+        alert('Reward claimed successfully!');
+        
+        // Update button state
+        await updateClaimButton();
+    } catch (error) {
+        console.error('Claim failed:', error);
+        alert('Failed to claim reward: ' + (error.message || 'Unknown error'));
+        claimBtn.textContent = originalText;
+        claimBtn.disabled = false;
+    }
 }
 
 // Update tries display
@@ -258,6 +342,7 @@ async function initCoinbase() {
 
 // Event listeners
 document.getElementById('pay-btn').addEventListener('click', payToPlay);
+document.getElementById('claim-reward-btn').addEventListener('click', claimReward);
 document.getElementById('connect-wallet-btn').addEventListener('click', async () => {
     // Show a prompt or modal to select wallet type
     const walletType = prompt('Select wallet: metamask, walletconnect, coinbase').toLowerCase();
@@ -275,6 +360,10 @@ document.getElementById('connect-wallet-btn').addEventListener('click', async ()
 // Initialize prize pool display on page load
 window.addEventListener('load', () => {
     updatePrizePool();
-    // Refresh prize pool every 30 seconds
-    setInterval(updatePrizePool, 30000);
+    updateClaimButton();
+    // Refresh prize pool and claim button every 30 seconds
+    setInterval(() => {
+        updatePrizePool();
+        updateClaimButton();
+    }, 30000);
 });
