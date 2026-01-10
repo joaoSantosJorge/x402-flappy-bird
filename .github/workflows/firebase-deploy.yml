@@ -40,7 +40,11 @@ jobs:
           fi
       
       - name: Install Firebase Tools
-        run: npm install -g firebase-tools
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          command: npm install -g firebase-tools
       
       - name: Deploy Frontend
         if: steps.changes.outputs.frontend_changed == 'true'
