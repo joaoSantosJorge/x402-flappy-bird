@@ -248,7 +248,7 @@
 
         <div class="hero-section">
             <div class="logo">
-                SQUARE GAME<br>PRIZE POOL
+                🟦 SQUARE GAME<br>PRIZE POOL
             </div>
             <div class="tagline">
                 COMPETE • WIN USDC • MONTHLY CYCLES
@@ -404,7 +404,7 @@
         });
 
         // Contract configuration
-        const contractAddress = '0x6f265b0356EE48d7BDe38d7fB27AAAc2E6bBd5FB'; // Base Sepolia testnet
+        const contractAddress = '0xdd0bbf48f85f5314c3754cd63103be927b55986c'; // Base Sepolia testnet
         const rpcUrl = 'https://sepolia.base.org';
 
         // Load prize pool from smart contract
@@ -428,7 +428,9 @@
                 document.getElementById('pool-amount').textContent = totalPoolUSDC.toFixed(2) + ' USDC';
             } catch (error) {
                 console.error('Error loading prize pool:', error);
-                document.getElementById('pool-amount').textContent = '-.-- USDC';
+                console.error('Error details:', error.message);
+                // Show 0.00 instead of error when contract can't be reached
+                document.getElementById('pool-amount').textContent = '0.00 USDC';
             }
         }
 

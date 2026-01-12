@@ -294,7 +294,8 @@
         async function loadArchive() {
             try {
                 // Load cycle history from Firestore
-                const cyclesSnapshot = await db.collection('cycleHistory').orderBy('endDate', 'desc').get();
+                // Try without orderBy first to avoid index issues
+                const cyclesSnapshot = await db.collection('cycleHistory').get();
                 
                 const cycles = [];
                 cyclesSnapshot.forEach(doc => {
@@ -304,6 +305,11 @@
                 if (cycles.length === 0) {
                     document.getElementById('cycles-container').innerHTML = 
                         '<div class="no-data-message">No archived cycles yet. Complete the first cycle to see historical data!</div>';
+                    // Update stats to show 0 instead of -
+                    document.getElementById('total-cycles').textContent = '0';
+                    document.getElementById('total-pool').textContent = '0.00 USDC';
+                    document.getElementById('total-winners').textContent = '0';
+                    document.getElementById('highest-score').textContent = '0';
                     return;
                 }
 
@@ -338,8 +344,14 @@
 
             } catch (error) {
                 console.error('Error loading archive:', error);
+                console.error('Error details:', error.message);
                 document.getElementById('cycles-container').innerHTML = 
-                    '<div class="no-data-message">Error loading archive data. Please try again later.</div>';
+                    '<div class="no-data-message">Error loading archive data: ' + error.message + '</div>';
+                // Show 0 values on error
+                document.getElementById('total-cycles').textContent = '0';
+                document.getElementById('total-pool').textContent = '0.00 USDC';
+                document.getElementById('total-winners').textContent = '0';
+                document.getElementById('highest-score').textContent = '0';
             }
         }
 
@@ -347,8 +359,19 @@
             let sortedCycles = [...cycles];
             
             switch(sortType) {
+                case 'newest':
+                    sortedCycles.sort((a, b) => {
+                        const aDate = a.endDate?.seconds || 0;
+                        const bDate = b.endDate?.seconds || 0;
+                        return bDate - aDate; // Newest first
+                    });
+                    break;
                 case 'oldest':
-                    sortedCycles.reverse();
+                    sortedCycles.sort((a, b) => {
+                        const aDate = a.endDate?.seconds || 0;
+                        const bDate = b.endDate?.seconds || 0;
+                        return aDate - bDate; // Oldest first
+                    });
                     break;
                 case 'pool-high':
                     sortedCycles.sort((a, b) => parseFloat(b.prizePool || 0) - parseFloat(a.prizePool || 0));
@@ -356,7 +379,6 @@
                 case 'pool-low':
                     sortedCycles.sort((a, b) => parseFloat(a.prizePool || 0) - parseFloat(b.prizePool || 0));
                     break;
-                // 'newest' is default, already sorted
             }
             
             displayCycles(sortedCycles);
