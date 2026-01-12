@@ -120,20 +120,58 @@
         .controls-section {
             margin-top: 25px;
         }
-        .controls-header {
-            font-family: 'Courier New', Courier, 'Lucida Console', monospace;
-            font-size: 18px;
-            color: var(--fg);
-            font-weight: bold;
-            margin-bottom: 15px;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            border-bottom: 2px solid var(--border);
-            padding-bottom: 10px;
-        }
         .controls-grid {
             display: grid;
             gap: 10px;
+            margin-bottom: 15px;
+        }
+        .controls-header {
+            font-family: 'Courier New', Courier, 'Lucida Console', monospace;
+            font-size: 16px;
+            color: var(--fg);
+            font-weight: bold;
+            margin-bottom: 10px;
+            margin-top: 10px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 8px;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: opacity 0.2s;
+        }
+        .controls-header:hover {
+            opacity: 0.8;
+        }
+        .controls-toggle {
+            font-size: 14px;
+            transition: transform 0.3s;
+        }
+        .controls-toggle.collapsed {
+            transform: rotate(-90deg);
+        }
+        .controls-info {
+            background: var(--bg);
+            border: 2px dashed var(--border);
+            padding: 12px;
+            font-family: 'Courier New', Courier, 'Lucida Console', monospace;
+            font-size: 13px;
+            color: var(--fg);
+            line-height: 1.6;
+            opacity: 0.9;
+            max-height: 200px;
+            overflow: hidden;
+            transition: max-height 0.3s ease-in-out, opacity 0.3s, padding 0.3s;
+        }
+        .controls-info.collapsed {
+            max-height: 0;
+            opacity: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+            border-width: 0;
         }
         .wallet-section {
             background: var(--bg);
@@ -323,11 +361,19 @@
                 </div>
 
                 <div class="controls-section">
-                    <div class="controls-header">⚙️ Game Controls</div>
                     <div class="controls-grid">
                         <button id="start-btn">▶️ Start Game</button>
                         <button id="pay-btn">💳 Pay to Play (0.02 USDC for 10 tries)</button>
                         <button id="connect-wallet-btn">🔗 Connect Wallet</button>
+                    </div>
+                    <div class="controls-header" id="controls-toggle">
+                        <span>⚙️ How to Play</span>
+                        <span class="controls-toggle">▼</span>
+                    </div>
+                    <div class="controls-info" id="controls-content">
+                        • Click or press SPACE to jump<br>
+                        • Avoid obstacles and survive as long as possible<br>
+                        • Your best score is automatically saved to the leaderboard
                     </div>
                 </div>
             </div>
@@ -366,4 +412,16 @@
     <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@coinbase/wallet-sdk@3.7.1/dist/index.js"></script>
+    
+    <!-- Controls toggle functionality -->
+    <script>
+        // Toggle controls section
+        document.getElementById('controls-toggle').addEventListener('click', function() {
+            const content = document.getElementById('controls-content');
+            const toggle = this.querySelector('.controls-toggle');
+            
+            content.classList.toggle('collapsed');
+            toggle.classList.toggle('collapsed');
+        });
+    </script>
 </body>

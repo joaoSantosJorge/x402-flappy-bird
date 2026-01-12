@@ -437,23 +437,38 @@
         // Load cycle time from Firebase
         async function loadCycleTime() {
             try {
-                const configDoc = await db.collection('config').doc('cycle').get();
-                if (configDoc.exists) {
-                    const data = configDoc.data();
-                    const endTime = data.endTime?.toDate();
+                const cycleDoc = await db.collection('cycleState').doc('current').get();
+                
+                if (cycleDoc.exists) {
+                    const data = cycleDoc.data();
+                    let endTime;
                     
-                    if (endTime) {
+                    if (data.endTime) {
+                        // Convert timestamp to JavaScript Date
+                        if (typeof data.endTime === 'number') {
+                            endTime = new Date(data.endTime);
+                        } else if (data.endTime.toDate) {
+                            endTime = data.endTime.toDate();
+                        } else if (data.endTime instanceof Date) {
+                            endTime = data.endTime;
+                        } else {
+                            endTime = new Date(data.endTime);
+                        }
+                        
+                        console.log('Cycle end time loaded:', endTime);
                         updateCountdown(endTime);
                         setInterval(() => updateCountdown(endTime), 1000);
                     } else {
                         document.getElementById('time-remaining').textContent = 'Not configured';
                     }
                 } else {
+                    console.warn('No cycle state found in Firebase');
                     document.getElementById('time-remaining').textContent = 'Not configured';
                 }
             } catch (error) {
                 console.error('Error loading cycle time:', error);
-                document.getElementById('time-remaining').textContent = 'Error loading';
+                console.error('Error details:', error.message);
+                document.getElementById('time-remaining').textContent = 'Not configured';
             }
         }
 
