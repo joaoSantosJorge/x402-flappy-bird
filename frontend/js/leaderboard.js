@@ -17,10 +17,11 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 // Connect to Firestore emulator if running locally
-if (location.hostname === "localhost") {
-    db.useEmulator("localhost", 8080);
-    console.log("Using Firestore emulator at localhost:8080");
-}
+// Commented out to use production Firebase
+// if (location.hostname === "localhost") {
+//     db.useEmulator("localhost", 8080);
+//     console.log("Using Firestore emulator at localhost:8080");
+// }
 
 // Get current month key
 function getCurrentMonthKey() {

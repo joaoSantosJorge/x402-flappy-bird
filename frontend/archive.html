@@ -247,10 +247,11 @@
         const db = firebase.firestore();
 
         // Connect to Firestore emulator if running locally
-        if (location.hostname === "localhost") {
-            db.useEmulator("localhost", 8080);
-            console.log("Using Firestore emulator at localhost:8080");
-        }
+        // Commented out to use production Firebase
+        // if (location.hostname === "localhost") {
+        //     db.useEmulator("localhost", 8080);
+        //     console.log("Using Firestore emulator at localhost:8080");
+        // }
 
         // Theme toggle functionality
         const toggleBtn = document.getElementById('toggle-mode-btn');
@@ -325,7 +326,7 @@
                 document.getElementById('total-cycles').textContent = cycles.length;
                 document.getElementById('total-pool').textContent = `${formatUSDC(totalPool)} USDC`;
                 document.getElementById('total-winners').textContent = totalWinners;
-                document.getElementById('total-score').textContent = highestScore;
+                document.getElementById('highest-score').textContent = highestScore;
 
                 // Display cycles
                 displayCycles(cycles);
