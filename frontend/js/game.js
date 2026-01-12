@@ -29,7 +29,7 @@ if (modeToggleBtn) {
     const savedMode = localStorage.getItem('flappy-mode');
     setMode(savedMode === 'light' ? 'light' : 'dark');
 }
-// Flappy Bird Game Logic
+// Square Game Logic
 // This file will contain the main game mechanics using HTML5 Canvas
 
 const canvas = document.getElementById('game-canvas');
