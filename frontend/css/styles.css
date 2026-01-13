@@ -227,15 +227,24 @@ h2, #wallet-info {
     box-shadow: 2px 2px 0 var(--button-shadow1), 4px 4px 0 var(--button-shadow2);
 }
 
-.claim-btn:hover:not(:disabled) {
+.claim-btn:hover {
     background: var(--button-fg);
     color: var(--button-bg);
     box-shadow: 2px 2px 0 var(--button-shadow2), 4px 4px 0 var(--button-shadow1);
 }
 
 .claim-btn:disabled {
-    opacity: 0.4;
+    opacity: 0.5;
     cursor: not-allowed;
+    background: var(--button-bg) !important;
+    color: var(--button-fg) !important;
+    box-shadow: 2px 2px 0 var(--button-shadow1), 4px 4px 0 var(--button-shadow2) !important;
+}
+
+.claim-btn:disabled:hover {
+    background: var(--button-bg) !important;
+    color: var(--button-fg) !important;
+    box-shadow: 2px 2px 0 var(--button-shadow1), 4px 4px 0 var(--button-shadow2) !important;
 }
 
 /* Navigation links in game UI */

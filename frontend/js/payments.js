@@ -77,7 +77,7 @@ async function updateClaimButton() {
     
     if (!userAccount || !web3) {
         claimBtn.disabled = true;
-        claimBtn.textContent = 'Claim Reward';
+        claimBtn.textContent = 'Connect Wallet First';
         return;
     }
     
@@ -102,7 +102,7 @@ async function updateClaimButton() {
             claimBtn.textContent = `Claim $${rewardUSDC}`;
         } else {
             claimBtn.disabled = true;
-            claimBtn.textContent = 'No Reward';
+            claimBtn.textContent = 'No Reward Available';
         }
     } catch (error) {
         console.error('Error checking rewards:', error);
@@ -319,6 +319,145 @@ async function payToPlay() {
     }
 }
 
+// Donate to prize pool
+async function donate() {
+    if (!web3 || !userAccount) {
+        alert('Please connect a wallet first');
+        return;
+    }
+
+    const donateAmountInput = document.getElementById('donate-amount');
+    const donateAmount = parseFloat(donateAmountInput.value);
+
+    if (!donateAmount || donateAmount <= 0) {
+        alert('Please enter a valid donation amount');
+        return;
+    }
+
+    // Convert USDC amount to token units (6 decimals)
+    const donateAmountInTokenUnits = Math.floor(donateAmount * 1000000);
+
+    // Check if on Base Sepolia testnet (chain ID 84532)
+    const chainId = await web3.eth.getChainId();
+    if (chainId !== 84532) {
+        console.log('Current chain ID:', chainId, 'Expected: 84532');
+        if (window.ethereum) {
+            try {
+                await window.ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: '0x14a34' }],
+                });
+                console.log('Successfully switched to Base Sepolia');
+            } catch (switchError) {
+                if (switchError.code === 4902) {
+                    try {
+                        await window.ethereum.request({
+                            method: 'wallet_addEthereumChain',
+                            params: [{
+                                chainId: '0x14a34',
+                                chainName: 'Base Sepolia',
+                                nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+                                rpcUrls: ['https://sepolia.base.org'],
+                                blockExplorerUrls: ['https://sepolia.basescan.org'],
+                            }],
+                        });
+                        console.log('Successfully added and switched to Base Sepolia');
+                    } catch (addError) {
+                        console.error('Failed to add Base Sepolia network:', addError);
+                        alert('Failed to add Base Sepolia network. Please add it manually.');
+                        return;
+                    }
+                } else {
+                    console.error('Failed to switch to Base Sepolia network:', switchError);
+                    alert('Please switch to Base Sepolia testnet manually in your wallet');
+                    return;
+                }
+            }
+        } else {
+            alert('Please switch to Base Sepolia testnet in your wallet');
+            return;
+        }
+    }
+
+    const usdcAddress = '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
+    const flappyBirdContractAddress = '0xdd0bbf48f85f5314c3754cd63103be927b55986c';
+
+    const usdcAbi = [
+        {
+            "constant": false,
+            "inputs": [
+                {"name": "_spender", "type": "address"},
+                {"name": "_value", "type": "uint256"}
+            ],
+            "name": "approve",
+            "outputs": [{"name": "", "type": "bool"}],
+            "type": "function"
+        }
+    ];
+
+    const flappyBirdAbi = [
+        {
+            "inputs": [{"name": "amount", "type": "uint256"}],
+            "name": "donate",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+        }
+    ];
+
+    const usdcContract = new web3.eth.Contract(usdcAbi, usdcAddress);
+    const flappyBirdContract = new web3.eth.Contract(flappyBirdAbi, flappyBirdContractAddress);
+
+    const donateBtn = document.getElementById('donate-btn');
+    const originalText = donateBtn.textContent;
+
+    try {
+        donateBtn.disabled = true;
+        donateBtn.textContent = 'Processing...';
+
+        console.log('Approving USDC spend for donation...');
+        await usdcContract.methods.approve(flappyBirdContractAddress, donateAmountInTokenUnits).send({ from: userAccount });
+
+        console.log('Sending donation to contract...');
+        const tx = await flappyBirdContract.methods.donate(donateAmountInTokenUnits).send({ from: userAccount });
+
+        console.log('Donation successful! Transaction:', tx.transactionHash);
+
+        // Record donation in user profile database
+        try {
+            await fetch('https://us-central1-flappy-bird-leaderboard-463e0.cloudfunctions.net/recordPayment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    walletAddress: userAccount,
+                    amountUSDC: donateAmount,
+                    transactionHash: tx.transactionHash,
+                    isDonation: true
+                })
+            });
+            console.log('Donation recorded in user profile');
+        } catch (recordError) {
+            console.error('Failed to record donation in profile:', recordError);
+            // Don't fail the donation if recording fails
+        }
+
+        // Update prize pool display
+        await updatePrizePool();
+
+        alert(`Thank you for donating $${donateAmount.toFixed(2)} USDC!`);
+        donateAmountInput.value = '';
+        donateBtn.textContent = originalText;
+        donateBtn.disabled = false;
+    } catch (error) {
+        console.error('Donation failed:', error);
+        alert('Donation failed. Please try again.');
+        donateBtn.textContent = originalText;
+        donateBtn.disabled = false;
+    }
+}
+
 // Initialize WalletConnect connection
 async function initWalletConnect() {
     // TODO: Update chainId to 8453 (Base Mainnet) when going to production
@@ -362,6 +501,7 @@ async function initCoinbase() {
 // Event listeners
 document.getElementById('pay-btn').addEventListener('click', payToPlay);
 document.getElementById('claim-reward-btn').addEventListener('click', claimReward);
+document.getElementById('donate-btn').addEventListener('click', donate);
 document.getElementById('connect-wallet-btn').addEventListener('click', async () => {
     // Show a prompt or modal to select wallet type
     const walletType = prompt('Select wallet: metamask, walletconnect, coinbase').toLowerCase();
