@@ -493,41 +493,42 @@
         // Load leaderboard stats
         async function loadStats() {
             try {
-                // Get current month leaderboard
-                const now = new Date();
-                const monthKey = `${now.getFullYear()}-${now.getMonth() + 1}`;
-                const leaderboardSnapshot = await db.collection('leaderboard')
-                    .doc(monthKey)
-                    .collection('scores')
+                // Get current cycle scores from 'scores' collection
+                const scoresSnapshot = await db.collection('scores')
                     .orderBy('score', 'desc')
-                    .limit(1)
                     .get();
                 
                 let topScore = 0;
                 let totalPlayers = 0;
                 
-                if (!leaderboardSnapshot.empty) {
-                    const allScores = await db.collection('leaderboard')
-                        .doc(monthKey)
-                        .collection('scores')
-                        .get();
-                    
-                    totalPlayers = allScores.size;
-                    topScore = leaderboardSnapshot.docs[0].data().score;
+                if (!scoresSnapshot.empty) {
+                    totalPlayers = scoresSnapshot.size;
+                    topScore = scoresSnapshot.docs[0].data().score || 0;
                 }
                 
                 document.getElementById('total-players').textContent = totalPlayers;
                 document.getElementById('top-score').textContent = topScore;
 
-                // Get total cycles from history
-                const cyclesSnapshot = await db.collection('cycleHistory').get();
-                document.getElementById('total-cycles').textContent = cyclesSnapshot.size;
+                // Get total cycles from archived leaderboards Cloud Function
+                try {
+                    const response = await fetch('https://us-central1-flappy-bird-leaderboard-463e0.cloudfunctions.net/getArchivedLeaderboards');
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        document.getElementById('total-cycles').textContent = data.totalArchives-2 > 0 ? data.totalArchives-2 : 0;
+                    } else {
+                        document.getElementById('total-cycles').textContent = '0';
+                    }
+                } catch (cycleError) {
+                    console.error('Error loading completed cycles:', cycleError);
+                    document.getElementById('total-cycles').textContent = '0';
+                }
                 
             } catch (error) {
                 console.error('Error loading stats:', error);
-                document.getElementById('total-players').textContent = '-';
-                document.getElementById('top-score').textContent = '-';
-                document.getElementById('total-cycles').textContent = '-';
+                document.getElementById('total-players').textContent = '0';
+                document.getElementById('top-score').textContent = '0';
+                document.getElementById('total-cycles').textContent = '0';
             }
         }
 

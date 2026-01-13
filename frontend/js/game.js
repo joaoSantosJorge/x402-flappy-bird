@@ -51,6 +51,7 @@ let bird = {
 
 let pipes = [];
 let score = 0;
+let highestScore = 0;
 let gameRunning = false;
 let gameOver = false;
 
@@ -90,7 +91,11 @@ function gameLoop() {
         if (!pipes[i].passed && bird.x > pipes[i].x + pipeWidth) {
             pipes[i].passed = true;
             score++;
-            updateScore();
+            // Update highest score if current score is higher
+            if (score > highestScore) {
+                highestScore = score;
+                updateScore();
+            }
         }
 
         // Remove off-screen pipes
@@ -159,7 +164,7 @@ function draw() {
 
 // Update score display
 function updateScore() {
-    document.getElementById('score').textContent = 'Score: ' + score;
+    document.getElementById('score').textContent = highestScore;
 }
 
 // Show game over

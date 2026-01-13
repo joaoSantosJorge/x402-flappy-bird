@@ -233,6 +233,47 @@ async function resetDatabase(cycleStartTime, cycleEndTime) {
   }
 }
 
+// Save cycle metadata to database
+async function saveCycleMetadata(cycleStartTime, cycleEndTime, prizePool, winners) {
+  const startDateStr = formatDate(cycleStartTime);
+  const endDateStr = formatDate(cycleEndTime);
+  const cycleName = `scores_${startDateStr}_to_${endDateStr}`;
+
+  console.log(`Saving cycle metadata: ${cycleName}`);
+
+  // Count unique players from scores
+  const scoresSnapshot = await db.collection("scores").get();
+  const uniquePlayers = new Set();
+  scoresSnapshot.forEach((doc) => {
+    const data = doc.data();
+    if (data.walletAddress) {
+      uniquePlayers.add(data.walletAddress);
+    }
+  });
+
+  const metadata = {
+    cycleName: cycleName,
+    startDate: cycleStartTime,
+    endDate: cycleEndTime,
+    prizePoolUSDC: parseFloat(web3.utils.fromWei(prizePool, "mwei")),
+    numberOfPlayers: uniquePlayers.size,
+    numberOfWinners: winners.length,
+    totalGamesPlayed: scoresSnapshot.size,
+    winners: winners.map((w, index) => ({
+      rank: index + 1,
+      address: w.address,
+      score: w.score,
+      name: w.name,
+    })),
+    createdAt: Date.now(),
+  };
+
+  await db.collection("cycleMetadata").doc(cycleName).set(metadata);
+  console.log(`Cycle metadata saved: ${uniquePlayers.size} players, ${web3.utils.fromWei(prizePool, "mwei")} USDC`);
+
+  return metadata;
+}
+
 // Allocate funds
 async function allocateFundsToWinners() {
   console.log("=== Starting Prize Allocation ===");
@@ -282,7 +323,7 @@ async function allocateFundsToWinners() {
   });
 
   console.log("Transaction hash:", tx.transactionHash);
-  return true;
+  return {success: true, totalPool: totalPool, winners: winners};
 }
 
 // Main cycle check function
@@ -296,9 +337,17 @@ async function checkCycle() {
   if (now >= cycleState.endTime) {
     console.log("CYCLE ENDED - Processing...");
 
-    const success = await allocateFundsToWinners();
+    const result = await allocateFundsToWinners();
 
-    if (success) {
+    if (result && result.success) {
+      // Save cycle metadata before resetting database
+      await saveCycleMetadata(
+          cycleState.startTime,
+          cycleState.endTime,
+          result.totalPool,
+          result.winners,
+      );
+
       await resetDatabase(cycleState.startTime, cycleState.endTime);
 
       // Start new cycle
@@ -356,9 +405,15 @@ exports.forceAllocate = functions.https.onRequest(async (req, res) => {
   try {
     // Add authentication check here in production!
     const cycleState = await getCycleState();
-    const success = await allocateFundsToWinners();
+    const result = await allocateFundsToWinners();
 
-    if (success) {
+    if (result && result.success) {
+      await saveCycleMetadata(
+          cycleState.startTime,
+          cycleState.endTime,
+          result.totalPool,
+          result.winners,
+      );
       await resetDatabase(cycleState.startTime, cycleState.endTime);
       const newCycleStart = Date.now();
       await db.collection("cycleState").doc("current").set({

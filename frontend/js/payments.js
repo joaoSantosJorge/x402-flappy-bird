@@ -283,12 +283,31 @@ async function payToPlay() {
         
         // Then call payToPlay on the FlappyBirdPrizePool contract
         console.log('Sending payment to contract...');
-        await flappyBirdContract.methods.payToPlay().send({ from: userAccount });
+        const tx = await flappyBirdContract.methods.payToPlay().send({ from: userAccount });
         
         console.log('Payment successful! You can now play the game.');
         hasPaid = true;
         triesRemaining = 10; // Grant 10 tries per payment
         updateTriesDisplay();
+        
+        // Record payment in user profile database
+        try {
+            await fetch('https://us-central1-flappy-bird-leaderboard-463e0.cloudfunctions.net/recordPayment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    walletAddress: userAccount,
+                    amountUSDC: 0.02,
+                    transactionHash: tx.transactionHash
+                })
+            });
+            console.log('Payment recorded in user profile');
+        } catch (recordError) {
+            console.error('Failed to record payment in profile:', recordError);
+            // Don't fail the payment if recording fails
+        }
         
         // Update prize pool display after payment
         await updatePrizePool();
