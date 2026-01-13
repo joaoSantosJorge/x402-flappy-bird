@@ -420,7 +420,9 @@ exports.recordPayment = functions.https.onRequest(async (req, res) => {
       isDonation: isDonation || false,
     });
 
-    console.log(`Payment recorded: ${walletAddress} - ${amountUSDC} USDC (Donation: ${isDonation})`);
+    console.log(
+      `Payment recorded: ${walletAddress} - ${amountUSDC} USDC (Donation: ${isDonation})`
+    );
 
     res.status(200).json({
       success: true,
