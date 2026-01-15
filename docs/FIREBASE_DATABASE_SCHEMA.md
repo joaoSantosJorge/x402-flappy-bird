@@ -157,6 +157,7 @@ Stores user account information and statistics across all cycles.
 | `walletAddress` | string | User's Ethereum wallet address (lowercase) |
 | `createdAt` | number | Account creation timestamp (milliseconds) |
 | `totalDonationsUSDC` | number | Total USDC donated to pool |
+| `totalPrizesWonUSDC` | number | Total USDC won from prize allocations |
 | `totalTries` | number | Total game tries purchased |
 | `totalGamesPlayed` | number | Total games played across all cycles |
 | `cyclesParticipated` | array | List of cycle names user participated in |
@@ -171,6 +172,8 @@ Stores user account information and statistics across all cycles.
     "highestScore": 1250,
     "tries": 20,
     "gamesPlayed": 5,
+    "prizeWonUSDC": 25.50,
+    "prizeRank": 2,
     "firstPlayedAt": 1705276800000,
     "lastPlayedAt": 1705881600000
   }
@@ -183,6 +186,7 @@ Stores user account information and statistics across all cycles.
   "walletAddress": "0x1234567890abcdef...",
   "createdAt": 1704960000000,
   "totalDonationsUSDC": 50.00,
+  "totalPrizesWonUSDC": 25.50,
   "totalTries": 100,
   "totalGamesPlayed": 25,
   "cyclesParticipated": ["scores_15-01-2026_to_22-01-2026"],
@@ -192,6 +196,8 @@ Stores user account information and statistics across all cycles.
       "highestScore": 1250,
       "tries": 100,
       "gamesPlayed": 25,
+      "prizeWonUSDC": 25.50,
+      "prizeRank": 2,
       "firstPlayedAt": 1705276800000,
       "lastPlayedAt": 1705881600000
     }

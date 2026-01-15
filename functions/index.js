@@ -34,10 +34,12 @@ async function getOrCreateUserProfile(walletAddress) {
     walletAddress: walletAddress.toLowerCase(),
     createdAt: Date.now(),
     totalDonationsUSDC: 0,
+    totalPrizesWonUSDC: 0,
     totalTries: 0,
     totalGamesPlayed: 0,
     cyclesParticipated: [],
-    cycleStats: {}, // Map of cycleName -> {donationsUSDC, highestScore, tries, gamesPlayed}
+    // Map: cycleName -> {donationsUSDC, highestScore, tries, gamesPlayed, prizeWonUSDC}
+    cycleStats: {},
     lastActiveAt: Date.now(),
   };
 
@@ -489,6 +491,8 @@ exports.getUserProfile = functions.https.onRequest(async (req, res) => {
         highestScore: stats.highestScore || 0,
         tries: stats.tries || 0,
         gamesPlayed: stats.gamesPlayed || 0,
+        prizeWonUSDC: stats.prizeWonUSDC || 0,
+        prizeRank: stats.prizeRank || null,
         firstPlayedAt: stats.firstPlayedAt || null,
         lastPlayedAt: stats.lastPlayedAt || null,
       };
@@ -515,6 +519,7 @@ exports.getUserProfile = functions.https.onRequest(async (req, res) => {
         lastActiveAt: userData.lastActiveAt,
         summary: {
           totalDonationsUSDC: userData.totalDonationsUSDC || 0,
+          totalPrizesWonUSDC: userData.totalPrizesWonUSDC || 0,
           totalTries: userData.totalTries || 0,
           totalGamesPlayed: userData.totalGamesPlayed || 0,
           cyclesParticipated: userData.cyclesParticipated?.length || 0,

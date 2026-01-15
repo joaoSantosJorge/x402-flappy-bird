@@ -230,6 +230,35 @@
             margin-top: 0;
             font-family: 'Courier New', Courier, 'Lucida Console', monospace;
         }
+        .claim-prize-btn {
+            background: #4CAF50;
+            color: white;
+            border: 2px solid #388E3C;
+            padding: 12px 24px;
+            font-family: 'Courier New', Courier, 'Lucida Console', monospace;
+            font-size: 16px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 2px 2px 0 #2E7D32, 4px 4px 0 #1B5E20;
+            transition: all 0.2s;
+            margin-top: 15px;
+            margin-left: auto;
+            margin-right: auto;
+            display: block;
+        }
+        .claim-prize-btn:hover:not(:disabled) {
+            background: #388E3C;
+            box-shadow: 1px 1px 0 #2E7D32, 2px 2px 0 #1B5E20;
+            transform: translate(1px, 1px);
+        }
+        .claim-prize-btn:disabled {
+            background: #666;
+            border-color: #555;
+            box-shadow: 2px 2px 0 #444, 4px 4px 0 #333;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
     </style>
 </head>
 <body>
@@ -265,6 +294,7 @@
             <div class="wallet-header">
                 <div class="wallet-address" id="profile-wallet">Loading...</div>
                 <div class="wallet-status" id="wallet-status">✅ Wallet Verified</div>
+                <button class="claim-prize-btn" id="claim-prize-btn" style="display: none;" onclick="claimPrize()">Claim Prize</button>
             </div>
 
             <div class="stats-grid">
@@ -281,8 +311,8 @@
                     <div class="stat-value" id="total-donations">-</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-label">Total Games Played</div>
-                    <div class="stat-value" id="total-games">-</div>
+                    <div class="stat-label">Prize Won</div>
+                    <div class="stat-value" id="prize-won">-</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-label">Cycles Participated</div>
@@ -332,6 +362,10 @@
         let web3;
         let userAccount;
         let targetWallet; // Wallet from URL
+        
+        // Contract constants
+        const FLAPPY_BIRD_CONTRACT_ADDRESS = '0xdd0bbf48f85f5314c3754cd63103be927b55986c';
+        const BASE_SEPOLIA_CHAIN_ID = 84532;
 
         // Theme toggle functionality
         const toggleBtn = document.getElementById('toggle-mode-btn');
@@ -391,6 +425,18 @@
                        endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
             }
             return cycleName;
+        }
+
+        // Get the best available wallet provider
+        function getWalletProvider() {
+            if (window.phantom?.ethereum) {
+                return window.phantom.ethereum;
+            } else if (window.ethereum?.isPhantom) {
+                return window.ethereum;
+            } else if (window.ethereum) {
+                return window.ethereum;
+            }
+            return null;
         }
 
         // Initialize MetaMask connection
@@ -481,6 +527,9 @@
 
                 // Update wallet display
                 document.getElementById('profile-wallet').textContent = targetWallet;
+                
+                console.log('Loading profile for:', targetWallet);
+                console.log('Connected account:', userAccount);
 
                 // Load user profile
                 const profileResponse = await fetch(
@@ -513,10 +562,119 @@
 
                 // Update profile display
                 updateProfileDisplay(profileData.profile, rankData);
+                
+                // Check for claimable prizes
+                await updateClaimPrizeButton();
 
             } catch (error) {
                 console.error('Error loading profile:', error);
                 showError('Failed to load profile data. Please try again.');
+            }
+        }
+
+        // Check if user has claimable prize and update button
+        async function updateClaimPrizeButton() {
+            const claimBtn = document.getElementById('claim-prize-btn');
+            if (!claimBtn) return;
+            
+            // Only show claim button if viewing own profile
+            if (!userAccount || userAccount.toLowerCase() !== targetWallet.toLowerCase()) {
+                claimBtn.style.display = 'none';
+                return;
+            }
+            
+            // If no web3, show button to connect wallet
+            if (!web3) {
+                claimBtn.style.display = 'block';
+                claimBtn.disabled = true;
+                claimBtn.textContent = 'Connect Wallet First';
+                return;
+            }
+            
+            try {
+                // Check network
+                const chainId = await web3.eth.getChainId();
+                if (Number(chainId) !== BASE_SEPOLIA_CHAIN_ID) {
+                    claimBtn.style.display = 'block';
+                    claimBtn.disabled = true;
+                    claimBtn.textContent = 'Switch to Base Sepolia';
+                    return;
+                }
+                
+                // Check if user has rewards to claim from contract
+                const contractABI = [
+                    {
+                        "inputs": [{"name": "", "type": "address"}],
+                        "name": "rewards",
+                        "outputs": [{"name": "", "type": "uint256"}],
+                        "stateMutability": "view",
+                        "type": "function"
+                    }
+                ];
+                
+                const contract = new web3.eth.Contract(contractABI, FLAPPY_BIRD_CONTRACT_ADDRESS);
+                const reward = await contract.methods.rewards(userAccount).call();
+                const rewardUSDC = (parseInt(reward) / 1000000).toFixed(2);
+                
+                console.log('Prize check - User:', userAccount, 'Reward:', rewardUSDC);
+                
+                if (parseFloat(rewardUSDC) > 0) {
+                    claimBtn.style.display = 'block';
+                    claimBtn.disabled = false;
+                    claimBtn.textContent = `🏆 Claim $${rewardUSDC} Prize`;
+                } else {
+                    claimBtn.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error checking prize:', error);
+                claimBtn.style.display = 'block';
+                claimBtn.disabled = true;
+                claimBtn.textContent = 'Check Prize';
+            }
+        }
+        
+        // Claim prize function
+        async function claimPrize() {
+            if (!web3 || !userAccount) {
+                alert('Please connect your wallet first');
+                return;
+            }
+            
+            const claimBtn = document.getElementById('claim-prize-btn');
+            const originalText = claimBtn.textContent;
+            
+            try {
+                claimBtn.disabled = true;
+                claimBtn.textContent = 'Claiming...';
+                
+                const contractABI = [
+                    {
+                        "inputs": [],
+                        "name": "claimReward",
+                        "outputs": [],
+                        "stateMutability": "nonpayable",
+                        "type": "function"
+                    }
+                ];
+                
+                const contract = new web3.eth.Contract(contractABI, FLAPPY_BIRD_CONTRACT_ADDRESS);
+                
+                console.log('Claiming prize...');
+                const tx = await contract.methods.claimReward().send({ from: userAccount });
+                
+                console.log('Prize claimed! Transaction:', tx.transactionHash);
+                alert('🎉 Prize claimed successfully!');
+                
+                // Hide the button after successful claim
+                claimBtn.style.display = 'none';
+                
+                // Reload profile to update stats
+                await loadProfile();
+            } catch (error) {
+                console.error('Claim failed:', error);
+                alert('Failed to claim prize: ' + (error.message || 'Unknown error'));
+                claimBtn.textContent = originalText;
+                claimBtn.disabled = false;
             }
         }
 
@@ -529,7 +687,7 @@
                 rankData && rankData.rank ? `#${rankData.rank}/${rankData.totalPlayers}` : 'Not ranked';
             document.getElementById('best-score').textContent = summary.allTimeBestScore || 0;
             document.getElementById('total-donations').textContent = `$${(summary.totalDonationsUSDC || 0).toFixed(2)}`;
-            document.getElementById('total-games').textContent = summary.totalGamesPlayed || 0;
+            document.getElementById('prize-won').textContent = `$${(summary.totalPrizesWonUSDC || 0).toFixed(2)}`;
             document.getElementById('cycles-participated').textContent = summary.cyclesParticipated || 0;
             document.getElementById('total-tries').textContent = summary.totalTries || 0;
 
@@ -625,20 +783,45 @@
                 return;
             }
 
+            const provider = getWalletProvider();
+            
             // Try to auto-connect wallet if available
-            if (typeof window.ethereum !== 'undefined' && window.ethereum.selectedAddress) {
-                userAccount = window.ethereum.selectedAddress;
-                checkWalletAccess();
-            } else {
-                showWalletConnection();
-            }
-
-            // Listen for wallet changes
-            if (typeof window.ethereum !== 'undefined') {
-                window.ethereum.on('accountsChanged', (accounts) => {
-                    userAccount = accounts[0];
-                    checkWalletAccess();
+            if (provider) {
+                // Try to get already connected account
+                provider.request({ method: 'eth_accounts' })
+                    .then((accounts) => {
+                        if (accounts && accounts.length > 0) {
+                            userAccount = accounts[0];
+                            web3 = new Web3(provider);
+                            console.log('Auto-detected wallet:', userAccount);
+                            console.log('Web3 initialized:', web3 ? 'yes' : 'no');
+                            checkWalletAccess();
+                        } else {
+                            // No accounts connected, just load profile in view mode
+                            checkWalletAccess();
+                        }
+                    })
+                    .catch(() => {
+                        checkWalletAccess();
+                    });
+                
+                // Listen for wallet changes
+                provider.on('accountsChanged', (accounts) => {
+                    if (accounts && accounts.length > 0) {
+                        userAccount = accounts[0];
+                        web3 = new Web3(provider);
+                        console.log('Wallet changed to:', userAccount);
+                        // Reload the profile to update the UI (show Edit button if now viewing own profile)
+                        loadProfile();
+                    } else {
+                        userAccount = null;
+                        web3 = null;
+                        loadProfile();
+                    }
                 });
+            } else {
+                // No wallet provider, just show profile in view mode
+                checkWalletAccess();
             }
         });
     </script>
