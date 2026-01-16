@@ -84,8 +84,26 @@ async function updateClaimButton() {
     }
     
     try {
-        // Check network first
-        const chainId = await web3.eth.getChainId();
+        // Check network first - use provider if available, fallback to RPC
+        let chainId;
+        try {
+            // Try to get chain ID from the connected provider first
+            if (provider && provider.request) {
+                const chainIdHex = await provider.request({ method: 'eth_chainId' });
+                chainId = parseInt(chainIdHex, 16);
+            } else {
+                // Fallback to web3
+                chainId = await web3.eth.getChainId();
+            }
+        } catch (chainError) {
+            console.warn('Failed to get chain ID from provider, using RPC:', chainError.message);
+            // Create a read-only web3 instance with just the RPC for chain ID check
+            const readWeb3 = new Web3(BASE_SEPOLIA_RPC);
+            chainId = await readWeb3.eth.getChainId();
+        }
+        
+        console.log('Current chain ID:', chainId, 'Expected: 84532');
+        
         if (chainId !== 84532) {
             claimBtn.disabled = true;
             claimBtn.textContent = 'Switch to Base Sepolia';
@@ -259,6 +277,9 @@ async function connectToWallet(walletType) {
     try {
         isConnecting = true;
         console.log('Connecting to:', walletType);
+        
+        // Clear any existing connection state before connecting
+        await disconnectWallet();
         
         if (walletType === 'metamask') {
             if (window.ethereum && window.ethereum.isMetaMask) {
@@ -697,22 +718,40 @@ async function finalizeConnection() {
     userAccount = accounts[0];
     console.log('Connected to account:', userAccount);
     
+    // Reset game state when connecting
+    hasPaid = false;
+    triesRemaining = 0;
+    
     // Setup event listeners for non-WalletConnect providers
     if (provider.on && !wcProvider) {
+        // Remove old listeners first
+        if (provider.removeAllListeners) {
+            provider.removeAllListeners();
+        }
+        
         provider.on('accountsChanged', (accounts) => {
+            console.log('Accounts changed:', accounts);
             if (accounts.length === 0) {
+                console.log('No accounts available, disconnecting');
                 disconnectWallet();
-            } else {
+            } else if (accounts[0].toLowerCase() !== userAccount.toLowerCase()) {
+                console.log('Account switched from', userAccount, 'to', accounts[0]);
+                // Clear state when account changes
                 userAccount = accounts[0];
+                hasPaid = false;
+                triesRemaining = 0;
                 updateWalletDisplay();
+                updateTriesDisplay();
             }
         });
         
         provider.on('chainChanged', () => {
-            console.log('Chain changed');
+            console.log('Chain changed, updating button state');
+            updateClaimButton();
         });
         
         provider.on('disconnect', () => {
+            console.log('Provider disconnect event received');
             disconnectWallet();
         });
     }
@@ -726,28 +765,66 @@ async function connectWallet() {
     openWalletModal();
 }
 
-// Disconnect wallet
+// Disconnect wallet - complete cleanup
 async function disconnectWallet() {
+    console.log('🔌 Starting wallet disconnection...');
+    
     try {
+        // Remove provider event listeners
+        if (provider && provider.removeAllListeners && typeof provider.removeAllListeners === 'function') {
+            try {
+                provider.removeAllListeners();
+            } catch (e) {
+                console.log('Could not remove provider listeners:', e.message);
+            }
+        }
+        
+        // Disconnect WalletConnect
         if (wcProvider) {
-            await wcProvider.disconnect();
+            console.log('Disconnecting WalletConnect provider...');
+            try {
+                if (wcProvider.disconnect && typeof wcProvider.disconnect === 'function') {
+                    await wcProvider.disconnect();
+                }
+            } catch (error) {
+                console.log('Error disconnecting WalletConnect (may be normal):', error.message);
+            }
             wcProvider = null;
         }
         
-        if (provider && provider.disconnect && typeof provider.disconnect === 'function') {
-            await provider.disconnect();
+        // Disconnect other provider types
+        if (provider) {
+            if (provider.disconnect && typeof provider.disconnect === 'function') {
+                try {
+                    await provider.disconnect();
+                } catch (error) {
+                    console.log('Error calling provider.disconnect():', error.message);
+                }
+            }
         }
     } catch (error) {
-        console.error('Error during disconnection:', error);
+        console.error('Error during disconnection cleanup:', error);
     }
     
+    // Clear all connection state
+    console.log('Clearing connection state...');
     provider = null;
     web3 = null;
     userAccount = null;
     
+    // Clear game state
+    hasPaid = false;
+    triesRemaining = 0;
+    
+    // Update all UI elements
     updateWalletDisplay();
     updateConnectButton();
-    console.log('Wallet disconnected');
+    updateTriesDisplay();
+    
+    // Also reset WalletConnect session state
+    await resetWalletConnectState();
+    
+    console.log('✅ Wallet fully disconnected and cleared');
 }
 
 // Update connect button
