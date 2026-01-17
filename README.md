@@ -204,6 +204,11 @@ The project uses a **monorepo structure** with three main layers:
 - Real-time leaderboard display
 - Retro-themed minimalist UI
 
+
+### Admin Dashboard
+http://localhost:8000/admin.html?wallet=0x87B3Fb6381EdC7B9Ae89540B5764f2a75C36A31B
+
+
 ### File Structure
 
 ```
