@@ -648,7 +648,8 @@
             try {
                 // Check network
                 const chainId = await web3.eth.getChainId();
-                if (Number(chainId) !== BASE_SEPOLIA_CHAIN_ID) {
+                console.log('Wallet Chain ID:', chainId, '(type:', typeof chainId, ') | Expected:', BASE_SEPOLIA_CHAIN_ID, '| Match:', String(chainId) === String(BASE_SEPOLIA_CHAIN_ID));
+                if (String(chainId) !== String(BASE_SEPOLIA_CHAIN_ID)) {
                     claimBtn.style.display = 'block';
                     claimBtn.disabled = true;
                     claimBtn.textContent = 'Switch to Base Sepolia';
@@ -959,7 +960,9 @@
                         
                         // Open Twitter intent
                         const profileUrl = window.location.origin + '/frontend/profile.html?wallet=' + targetWallet;
-                        const shareText = `🏆 Check out my profile on Square Game Prize Pool!\n\n🎯 Rank: #${rankData?.rank || '?'}\n⭐ Best Score: ${highestScore || '?'}\n\nJoin the competition:`;
+                        const shareText = isProfileOwner()
+                            ? `🏆 Check out my profile on Square Game Prize Pool!\n\n🎯 Rank: #${rankData?.rank || '?'}\n⭐ Best Score: ${highestScore || '?'}\n\nJoin the competition:`
+                            : `🏆 Check out this player on Square Game Prize Pool!\n\n🎯 Rank: #${rankData?.rank || '?'}\n⭐ Best Score: ${highestScore || '?'}\n\nJoin the competition:`;
                         const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(profileUrl)}`;
                         window.open(twitterUrl, '_blank', 'width=550,height=420');
                     }, 'image/png');
@@ -968,7 +971,9 @@
                     console.error('Screenshot capture failed:', err);
                     // Fallback: just open Twitter without screenshot
                     const profileUrl = window.location.origin + '/frontend/profile.html?wallet=' + targetWallet;
-                    const shareText = `🏆 Check out my profile on Square Game Prize Pool! Rank: #${rankData?.rank || '?'} Best Score: ${highestScore || '?'}`;
+                    const shareText = isProfileOwner()
+                        ? `🏆 Check out my profile on Square Game Prize Pool! Rank: #${rankData?.rank || '?'} Best Score: ${highestScore || '?'}`
+                        : `🏆 Check out this player on Square Game Prize Pool! Rank: #${rankData?.rank || '?'} Best Score: ${highestScore || '?'}`;
                     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(profileUrl)}`;
                     window.open(twitterUrl, '_blank', 'width=550,height=420');
                 } finally {
