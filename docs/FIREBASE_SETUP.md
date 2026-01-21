@@ -66,7 +66,7 @@ Your `cycleManager.js` is already configured to:
 **Local:**
 ```bash
 # Make sure serviceAccountKey.json is in project root
-node js/cycleManager.js
+node functions/cycleManager.js
 # Should see: "Firebase initialized with local service account"
 ```
 

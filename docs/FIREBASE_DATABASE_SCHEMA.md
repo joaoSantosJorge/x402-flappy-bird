@@ -303,13 +303,13 @@ For optimal query performance, create these composite indexes:
 
 ## Security Rules
 
-The database should enforce these security rules:
+The database enforces these security rules:
 
-- Users can only read their own profile
-- Users can only write their own scores
+- **Read**: All collections are publicly readable (for transparency and leaderboard display)
+- **Write**: Only Cloud Functions can write to any collection (client writes denied)
+- **Exception**: IP addresses in `scores` collection are stored but not exposed to clients
 - Admin functions (cycle operations) restricted to authenticated service account
-- Donations can be read publicly (incentive)
-- Payment history private to user
+- This model prevents client-side data manipulation while allowing public leaderboard visibility
 
 ---
 

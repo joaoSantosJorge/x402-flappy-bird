@@ -35,7 +35,7 @@ npm install -g firebase-tools
 firebase login
 
 # Initialize your project (if not already done)
-cd /home/joaosantosjorge/x402-flappy-bird
+cd /home/joaosantosjorge/flappybird-pool-competition
 firebase init functions
 ```
 

@@ -213,14 +213,13 @@ The security rules are enforced **at the database level**:
 All writes are logged:
 - **`payments` collection** - Full audit trail of all transactions
 - **Timestamps** - Server-generated, cannot be spoofed
-- **IP tracking** - For abuse detection (stored securely)
+- **IP tracking** - For abuse detection (stored securely, not exposed to clients)
 
 ---
 
 ## Future Enhancements
 
 Potential improvements:
-- [ ] Per-user read restrictions (users can only read their own payment history)
 - [ ] Custom authentication for admin functions
 - [ ] Encrypted sensitive fields
 - [ ] Time-based access restrictions

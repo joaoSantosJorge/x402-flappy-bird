@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes how sensitive credentials and keys are managed for the x402-flappy-bird project. All secrets are kept secure and never committed to version control.
+This document describes how sensitive credentials and keys are managed for the flappybird-pool-competition project. All secrets are kept secure and never committed to version control.
 
 ## Secret Files Location
 
