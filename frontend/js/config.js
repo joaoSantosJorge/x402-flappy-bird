@@ -3,7 +3,7 @@
 
 const CONFIG = {
     // Smart Contract Addresses
-    CONTRACT_ADDRESS: '0xdd0bbf48f85f5314c3754cd63103be927b55986c',
+    CONTRACT_ADDRESS: '0x5b498d19A03E24b5187d5B71B80b02C437F9cE08',
     USDC_ADDRESS: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
     
     // Network Configuration
