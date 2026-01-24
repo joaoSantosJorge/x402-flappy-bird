@@ -701,29 +701,78 @@ const WalletManager = (function() {
 
     // Auto-reconnect on page load
     async function autoReconnect() {
-        const detectedProvider = getWalletProvider();
-        
-        if (detectedProvider) {
-            provider = detectedProvider;
-            setupProviderListeners();
-            
+        // Check all available providers and find one that's connected AND on the right chain
+        const providers = [];
+
+        // Collect all available providers
+        if (window.ethereum && window.ethereum.isMetaMask) {
+            providers.push({ name: 'MetaMask', provider: window.ethereum });
+        }
+        if (window.phantom?.ethereum) {
+            providers.push({ name: 'Phantom', provider: window.phantom.ethereum });
+        } else if (window.ethereum?.isPhantom) {
+            providers.push({ name: 'Phantom', provider: window.ethereum });
+        }
+        // Add generic ethereum provider if not already added
+        if (window.ethereum && !providers.some(p => p.provider === window.ethereum)) {
+            providers.push({ name: 'Ethereum', provider: window.ethereum });
+        }
+
+        console.log('Available providers:', providers.map(p => p.name));
+
+        // Try each provider, preferring ones on the correct chain
+        let bestMatch = null;
+        const targetChainId = typeof CONFIG !== 'undefined' ? CONFIG.CHAIN_ID : 84532;
+
+        for (const { name, provider: testProvider } of providers) {
             try {
-                const accounts = await detectedProvider.request({ method: 'eth_accounts' });
-                console.log('Checking for connected accounts...', accounts);
-                
+                const accounts = await testProvider.request({ method: 'eth_accounts' });
+
                 if (accounts && accounts.length > 0) {
-                    userAccount = accounts[0].toLowerCase();
-                    web3 = new Web3(detectedProvider);
-                    console.log('Auto-detected wallet:', userAccount);
-                    
-                    if (callbacks.onConnect) {
-                        callbacks.onConnect(userAccount, web3);
+                    // Check chain ID
+                    let chainId = null;
+                    try {
+                        const chainIdResult = await testProvider.request({ method: 'eth_chainId' });
+                        chainId = typeof chainIdResult === 'string' && chainIdResult.startsWith('0x')
+                            ? parseInt(chainIdResult, 16)
+                            : Number(chainIdResult);
+                    } catch (e) {
+                        console.warn(`Could not get chain ID from ${name}:`, e.message);
                     }
-                    return true;
+
+                    console.log(`${name}: accounts=${accounts[0]}, chainId=${chainId}, target=${targetChainId}`);
+
+                    // If this provider is on the correct chain, use it immediately
+                    if (chainId === targetChainId) {
+                        bestMatch = { name, provider: testProvider, accounts, chainId, isCorrectChain: true };
+                        break;
+                    }
+
+                    // Otherwise, store as fallback
+                    if (!bestMatch) {
+                        bestMatch = { name, provider: testProvider, accounts, chainId, isCorrectChain: false };
+                    }
                 }
             } catch (error) {
-                console.error('Error checking accounts:', error);
+                console.log(`${name} check failed:`, error.message);
             }
+        }
+
+        if (bestMatch) {
+            provider = bestMatch.provider;
+            setupProviderListeners();
+            userAccount = bestMatch.accounts[0].toLowerCase();
+            web3 = new Web3(provider);
+
+            if (!bestMatch.isCorrectChain) {
+                console.warn(`⚠️ Auto-connected to ${bestMatch.name} but on wrong chain (${bestMatch.chainId} instead of ${targetChainId})`);
+            }
+            console.log(`✅ Auto-detected wallet via ${bestMatch.name}:`, userAccount);
+
+            if (callbacks.onConnect) {
+                callbacks.onConnect(userAccount, web3);
+            }
+            return true;
         }
         
         // Try to restore WalletConnect session

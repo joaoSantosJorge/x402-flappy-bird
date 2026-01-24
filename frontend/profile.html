@@ -645,10 +645,33 @@
                 claimBtn.textContent = 'Connect Wallet First';
                 return;
             }
-            
+
             try {
-                // Check network
-                const chainId = await web3.eth.getChainId();
+                // Check network - query directly from provider for accuracy
+                let chainId = null;
+                const currentProvider = WalletManager.getProvider();
+
+                if (currentProvider && currentProvider.request) {
+                    try {
+                        const chainIdResult = await currentProvider.request({ method: 'eth_chainId' });
+                        // Handle both hex string and number formats
+                        if (typeof chainIdResult === 'string' && chainIdResult.startsWith('0x')) {
+                            chainId = parseInt(chainIdResult, 16);
+                        } else {
+                            chainId = Number(chainIdResult);
+                        }
+                        console.log('Chain ID from provider:', chainId);
+                    } catch (e) {
+                        console.warn('Failed to get chain ID from provider:', e.message);
+                    }
+                }
+
+                // Fallback to web3 if provider method failed
+                if (chainId === null) {
+                    chainId = Number(await web3.eth.getChainId());
+                    console.log('Chain ID from web3 fallback:', chainId);
+                }
+
                 console.log('Wallet Chain ID:', chainId, '(type:', typeof chainId, ') | Expected:', BASE_SEPOLIA_CHAIN_ID, '| Match:', String(chainId) === String(BASE_SEPOLIA_CHAIN_ID));
                 if (String(chainId) !== String(BASE_SEPOLIA_CHAIN_ID)) {
                     claimBtn.style.display = 'block';
