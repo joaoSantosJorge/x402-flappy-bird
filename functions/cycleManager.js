@@ -14,11 +14,36 @@ const db = admin.firestore();
 // These are set using Firebase Functions secrets or environment config
 const KEYSTORE_BASE64 = process.env.KEYSTORE_DATA;
 const KEYSTORE_PASSWORD = process.env.KEYSTORE_PASSWORD;
-const CYCLE_DURATION_DAYS = parseFloat(process.env.CYCLE_DURATION_DAYS || "7");
-const NUMBER_OF_WINNERS = parseInt(process.env.NUMBER_OF_WINNERS || "3");
-const FEE_PERCENTAGE = parseInt(process.env.FEE_PERCENTAGE || "1000");
 const FLAPPY_BIRD_CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS;
 const BASE_RPC_URL = process.env.BASE_RPC_URL || "https://sepolia.base.org";
+
+// Default values (used as fallback if Firestore config not found)
+const DEFAULT_CYCLE_DURATION_DAYS = 7;
+const DEFAULT_NUMBER_OF_WINNERS = 3;
+const DEFAULT_FEE_PERCENTAGE = 1000;
+
+// Get admin config from Firestore (reads cycleDurationDays, numberOfWinners, feePercentage)
+async function getAdminConfig() {
+  try {
+    const configDoc = await db.collection("config").doc("settings").get();
+    if (configDoc.exists) {
+      const data = configDoc.data();
+      return {
+        cycleDurationDays: parseFloat(data.cycleDurationDays) || DEFAULT_CYCLE_DURATION_DAYS,
+        numberOfWinners: parseInt(data.numberOfWinners) || DEFAULT_NUMBER_OF_WINNERS,
+        feePercentage: parseInt(data.feePercentage) || DEFAULT_FEE_PERCENTAGE,
+      };
+    }
+  } catch (error) {
+    console.error("Error reading admin config from Firestore:", error);
+  }
+  // Return defaults if config not found
+  return {
+    cycleDurationDays: DEFAULT_CYCLE_DURATION_DAYS,
+    numberOfWinners: DEFAULT_NUMBER_OF_WINNERS,
+    feePercentage: DEFAULT_FEE_PERCENTAGE,
+  };
+}
 
 // Initialize Web3
 const web3 = new Web3(BASE_RPC_URL);
@@ -81,11 +106,12 @@ async function getCycleState() {
   if (cycleDoc.exists) {
     return cycleDoc.data();
   }
-  // Create initial cycle
+  // Create initial cycle - read duration from Firestore config
+  const config = await getAdminConfig();
   const now = Date.now();
   const state = {
     startTime: now,
-    endTime: now + (CYCLE_DURATION_DAYS * 24 * 60 * 60 * 1000),
+    endTime: now + (config.cycleDurationDays * 24 * 60 * 60 * 1000),
     lastUpdated: now,
   };
   await db.collection("cycleState").doc("current").set(state);
@@ -93,10 +119,10 @@ async function getCycleState() {
 }
 
 // Get top winners
-async function getTopWinners() {
+async function getTopWinners(numberOfWinners) {
   const scoresSnapshot = await db.collection("scores")
       .orderBy("score", "desc")
-      .limit(NUMBER_OF_WINNERS)
+      .limit(numberOfWinners)
       .get();
 
   const winners = [];
@@ -113,9 +139,9 @@ async function getTopWinners() {
 }
 
 // Calculate percentages
-function calculatePercentages(numWinners) {
+function calculatePercentages(numWinners, feePercentage) {
   const percentages = [];
-  const totalForWinners = 10000 - FEE_PERCENTAGE;
+  const totalForWinners = 10000 - feePercentage;
 
   if (numWinners === 1) {
     percentages.push(totalForWinners);
@@ -279,6 +305,10 @@ async function saveCycleMetadata(cycleStartTime, cycleEndTime, prizePool, winner
 async function allocateFundsToWinners() {
   console.log("=== Starting Prize Allocation ===");
 
+  // Get admin config from Firestore
+  const config = await getAdminConfig();
+  console.log("Config:", config);
+
   const privateKey = await loadPrivateKey();
   const account = web3.eth.accounts.privateKeyToAccount(privateKey);
   web3.eth.accounts.wallet.add(account);
@@ -301,8 +331,8 @@ async function allocateFundsToWinners() {
     return false;
   }
 
-  // Get winners
-  const winners = await getTopWinners();
+  // Get winners using config from Firestore
+  const winners = await getTopWinners(config.numberOfWinners);
   if (winners.length === 0) {
     console.log("No winners found");
     return false;
@@ -311,11 +341,11 @@ async function allocateFundsToWinners() {
   console.log("Winners:", winners.map((w, i) => `${i + 1}. ${w.name} - ${w.score}`));
 
   const winnerAddresses = winners.map((w) => w.address);
-  const percentages = calculatePercentages(winners.length);
+  const percentages = calculatePercentages(winners.length, config.feePercentage);
 
   console.log("Calling allocateFunds...");
   const tx = await contract.methods.allocateFunds(
-      FEE_PERCENTAGE,
+      config.feePercentage,
       winnerAddresses,
       percentages,
   ).send({
@@ -351,15 +381,16 @@ async function checkCycle() {
 
       await resetDatabase(cycleState.startTime, cycleState.endTime);
 
-      // Start new cycle
+      // Start new cycle - read duration from Firestore config
+      const config = await getAdminConfig();
       const newCycleStart = Date.now();
       await db.collection("cycleState").doc("current").set({
         startTime: newCycleStart,
-        endTime: newCycleStart + (CYCLE_DURATION_DAYS * 24 * 60 * 60 * 1000),
+        endTime: newCycleStart + (config.cycleDurationDays * 24 * 60 * 60 * 1000),
         lastUpdated: newCycleStart,
       });
 
-      console.log("Cycle reset complete");
+      console.log(`Cycle reset complete (new duration: ${config.cycleDurationDays} days)`);
       return {success: true, message: "Cycle completed and reset"};
     } else {
       return {success: false, message: "Allocation failed"};
@@ -392,6 +423,16 @@ exports.checkCycleScheduled = functions.pubsub
 
 // HTTP function - for manual triggers
 exports.checkCycleManual = functions.https.onRequest(async (req, res) => {
+  // Enable CORS
+  res.set("Access-Control-Allow-Origin", "*");
+  res.set("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.set("Access-Control-Allow-Headers", "Content-Type");
+
+  if (req.method === "OPTIONS") {
+    res.status(204).send("");
+    return;
+  }
+
   try {
     const result = await checkCycle();
     res.json(result);
@@ -403,6 +444,16 @@ exports.checkCycleManual = functions.https.onRequest(async (req, res) => {
 
 // HTTP function - force allocation (emergency use)
 exports.forceAllocate = functions.https.onRequest(async (req, res) => {
+  // Enable CORS
+  res.set("Access-Control-Allow-Origin", "*");
+  res.set("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.set("Access-Control-Allow-Headers", "Content-Type");
+
+  if (req.method === "OPTIONS") {
+    res.status(204).send("");
+    return;
+  }
+
   try {
     // Add authentication check here in production!
     const cycleState = await getCycleState();
@@ -416,14 +467,20 @@ exports.forceAllocate = functions.https.onRequest(async (req, res) => {
           result.winners,
       );
       await resetDatabase(cycleState.startTime, cycleState.endTime);
+
+      // Start new cycle - read duration from Firestore config
+      const config = await getAdminConfig();
       const newCycleStart = Date.now();
       await db.collection("cycleState").doc("current").set({
         startTime: newCycleStart,
-        endTime: newCycleStart + (CYCLE_DURATION_DAYS * 24 * 60 * 60 * 1000),
+        endTime: newCycleStart + (config.cycleDurationDays * 24 * 60 * 60 * 1000),
         lastUpdated: newCycleStart,
       });
 
-      res.json({success: true, message: "Force allocation complete"});
+      res.json({
+        success: true,
+        message: `Force allocation complete. New cycle: ${config.cycleDurationDays} days`,
+      });
     } else {
       res.status(500).json({success: false, message: "Allocation failed"});
     }
