@@ -35,13 +35,35 @@ exports.updateCycleDuration = functions.https.onRequest(async (req, res) => {
       return res.status(400).json({error: "Invalid cycle duration (1-365 days)"});
     }
 
+    const durationMs = parseFloat(days) * 24 * 60 * 60 * 1000;
+
+    // Update the config
     await db.collection("config").doc("settings").set({
       cycleDurationDays: parseFloat(days),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedBy: adminWallet,
     }, {merge: true});
 
-    res.json({success: true, cycleDurationDays: days});
+    // Also update the current cycle's endTime based on the existing startTime
+    const cycleDoc = await db.collection("cycleState").doc("current").get();
+    if (cycleDoc.exists) {
+      const cycleData = cycleDoc.data();
+      const newEndTime = cycleData.startTime + durationMs;
+
+      await db.collection("cycleState").doc("current").update({
+        endTime: newEndTime,
+        lastUpdated: Date.now(),
+      });
+
+      res.json({
+        success: true,
+        cycleDurationDays: days,
+        newEndTime: newEndTime,
+        message: `Cycle duration updated. Cycle now ends at ${new Date(newEndTime).toISOString()}`,
+      });
+    } else {
+      res.json({success: true, cycleDurationDays: days});
+    }
   } catch (error) {
     console.error("Error updating cycle duration:", error);
     res.status(500).json({error: error.message});
@@ -107,6 +129,154 @@ exports.updateFeePercentage = functions.https.onRequest(async (req, res) => {
     res.json({success: true, feePercentage: percentage});
   } catch (error) {
     console.error("Error updating fee:", error);
+    res.status(500).json({error: error.message});
+  }
+});
+
+// Reset contract cycle (call sweepUnclaimed to reset fundsAllocated flag)
+exports.resetContractCycle = functions.https.onRequest(async (req, res) => {
+  // CORS
+  res.set("Access-Control-Allow-Origin", "*");
+  res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.set("Access-Control-Allow-Headers", "Content-Type");
+
+  if (req.method === "OPTIONS") {
+    res.status(204).send("");
+    return;
+  }
+
+  try {
+    const {Web3} = require("web3");
+    const {ethers} = require("ethers");
+
+    // Get configuration from environment variables
+    const KEYSTORE_BASE64 = process.env.KEYSTORE_DATA;
+    const KEYSTORE_PASSWORD = process.env.KEYSTORE_PASSWORD;
+    const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS;
+    const BASE_RPC_URL = process.env.BASE_RPC_URL || "https://sepolia.base.org";
+
+    if (!KEYSTORE_BASE64 || !KEYSTORE_PASSWORD || !CONTRACT_ADDRESS) {
+      throw new Error("Missing required environment variables");
+    }
+
+    // Decrypt keystore
+    const keystoreJson = Buffer.from(KEYSTORE_BASE64, "base64").toString("utf8");
+    const wallet = await ethers.Wallet.fromEncryptedJson(keystoreJson, KEYSTORE_PASSWORD);
+    console.log("Wallet address:", wallet.address);
+
+    // Initialize Web3
+    const web3 = new Web3(BASE_RPC_URL);
+    const account = web3.eth.accounts.privateKeyToAccount(wallet.privateKey);
+    web3.eth.accounts.wallet.add(account);
+
+    // Contract ABI for sweepUnclaimed
+    const contractABI = [
+      {
+        "inputs": [{"name": "winners", "type": "address[]"}],
+        "name": "sweepUnclaimed",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function",
+      },
+      {
+        "inputs": [],
+        "name": "fundsAllocated",
+        "outputs": [{"name": "", "type": "bool"}],
+        "stateMutability": "view",
+        "type": "function",
+      },
+    ];
+
+    const contract = new web3.eth.Contract(contractABI, CONTRACT_ADDRESS);
+
+    // Check if funds are allocated
+    const isAllocated = await contract.methods.fundsAllocated().call();
+    if (!isAllocated) {
+      return res.json({
+        success: true,
+        message: "Contract already reset (fundsAllocated is false)",
+      });
+    }
+
+    // Get previous winners from the most recent cycle metadata
+    const cycleMetadataSnapshot = await db.collection("cycleMetadata")
+        .orderBy("createdAt", "desc")
+        .limit(1)
+        .get();
+
+    let winnersAddresses = [];
+    if (!cycleMetadataSnapshot.empty) {
+      const metadata = cycleMetadataSnapshot.docs[0].data();
+      if (metadata.winners && metadata.winners.length > 0) {
+        winnersAddresses = metadata.winners.map((w) => w.address);
+      }
+    }
+
+    // Also add the owner address to sweep any owner fees
+    winnersAddresses.push(wallet.address);
+
+    // Remove duplicates
+    winnersAddresses = [...new Set(winnersAddresses)];
+
+    console.log("Calling sweepUnclaimed with addresses:", winnersAddresses);
+
+    // Call sweepUnclaimed
+    const tx = await contract.methods.sweepUnclaimed(winnersAddresses).send({
+      from: account.address,
+      gas: 300000,
+    });
+
+    console.log("sweepUnclaimed transaction hash:", tx.transactionHash);
+
+    res.json({
+      success: true,
+      message: "Contract cycle reset successfully",
+      transactionHash: tx.transactionHash,
+      sweptAddresses: winnersAddresses,
+    });
+  } catch (error) {
+    console.error("Error resetting contract cycle:", error);
+    res.status(500).json({error: error.message});
+  }
+});
+
+// Reset cycle state (start new cycle from now)
+exports.resetCycleState = functions.https.onRequest(async (req, res) => {
+  // CORS
+  res.set("Access-Control-Allow-Origin", "*");
+  res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.set("Access-Control-Allow-Headers", "Content-Type");
+
+  if (req.method === "OPTIONS") {
+    res.status(204).send("");
+    return;
+  }
+
+  try {
+    // Get cycle duration from config
+    const configDoc = await db.collection("config").doc("settings").get();
+    const durationDays = configDoc.exists && configDoc.data().cycleDurationDays ?
+      configDoc.data().cycleDurationDays :
+      7;
+
+    const now = Date.now();
+    const newEndTime = now + (durationDays * 24 * 60 * 60 * 1000);
+
+    await db.collection("cycleState").doc("current").set({
+      startTime: now,
+      endTime: newEndTime,
+      lastUpdated: now,
+    });
+
+    res.json({
+      success: true,
+      message: `Cycle reset. New cycle ends at ${new Date(newEndTime).toISOString()}`,
+      startTime: now,
+      endTime: newEndTime,
+      durationDays: durationDays,
+    });
+  } catch (error) {
+    console.error("Error resetting cycle state:", error);
     res.status(500).json({error: error.message});
   }
 });

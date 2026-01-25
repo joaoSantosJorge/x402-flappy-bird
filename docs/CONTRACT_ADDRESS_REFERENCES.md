@@ -3,6 +3,7 @@
 This document lists all locations where the SquarePrizePool contract address is referenced in the codebase.
 
 **Current Contract Address:** `0x5b498d19A03E24b5187d5B71B80b02C437F9cE08`
+https://sepolia.basescan.org/address/0x5b498d19a03e24b5187d5b71b80b02c437f9ce08
 
 ---
 

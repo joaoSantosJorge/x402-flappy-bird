@@ -11,11 +11,11 @@ Complete testing checklist for the Square Game Prize Pool application.
 ## Prerequisites
 
 ### Required Tools
-- [ ] Browser with MetaMask extension installed
-- [ ] Phantom wallet (browser extension or mobile)
-- [ ] Mobile device for WalletConnect testing
-- [ ] Base Sepolia ETH for gas (get from faucet)
-- [ ] Base Sepolia USDC for testing
+- [x] Browser with MetaMask extension installed
+- [x] Phantom wallet (browser extension or mobile)
+- [x] Mobile device for WalletConnect testing
+- [x] Base Sepolia ETH for gas (get from faucet)
+- [x] Base Sepolia USDC for testing
 
 ### Get Testnet Tokens
 1. **Base Sepolia ETH:**
@@ -40,12 +40,12 @@ Prepare at least 2-3 different wallet addresses for testing:
 ## 1. Home Page (index.html)
 
 ### Display Tests
-- [ ] Page loads without errors
-- [ ] Prize pool amount displays correctly (should match contract `totalPool`)
-- [ ] Cycle countdown timer shows correct time remaining
-- [ ] "Play Now" button is visible and clickable
-- [ ] "Donate" button is visible and clickable
-- [ ] Leaderboard preview shows top players (if any)
+- [x] Page loads without errors
+- [x] Prize pool amount displays correctly (should match contract `totalPool`)
+- [x] Cycle countdown timer shows correct time remaining
+- [x] "Play Now" button is visible and clickable
+- [x] "Donate" button is visible and clickable
+- [x] Leaderboard preview shows top players (if any)
 
 ### Verification
 ```
@@ -58,13 +58,13 @@ Expected: Timer shows "Xd Xh Xm Xs" countdown
 ## 2. Wallet Connection
 
 ### 2.1 MetaMask Connection
-- [ ] Click "Connect Wallet" button
-- [ ] Wallet modal appears with options
-- [ ] Select MetaMask
-- [ ] MetaMask popup appears requesting connection
-- [ ] Approve connection in MetaMask
-- [ ] Wallet address appears in UI (truncated format: 0x1234...5678)
-- [ ] Network is Base Sepolia (if wrong network, prompt to switch)
+- [x] Click "Connect Wallet" button
+- [x] Wallet modal appears with options
+- [x] Select MetaMask
+- [x] MetaMask popup appears requesting connection
+- [x] Approve connection in MetaMask
+- [x] Wallet address appears in UI (truncated format: 0x1234...5678)
+- [x] Network is Base Sepolia (if wrong network, prompt to switch)
 
 ### 2.2 Phantom Connection
 - [ ] Click "Connect Wallet" button
@@ -74,42 +74,42 @@ Expected: Timer shows "Xd Xh Xm Xs" countdown
 - [ ] Wallet address displays correctly
 
 ### 2.3 WalletConnect Connection
-- [ ] Click "Connect Wallet" button
-- [ ] Select WalletConnect option
-- [ ] QR code appears
-- [ ] Scan with mobile wallet (Trust Wallet, MetaMask Mobile, etc.)
-- [ ] Approve connection on mobile
-- [ ] Desktop shows connected state
-- [ ] Wallet address displays correctly
+- [x] Click "Connect Wallet" button
+- [x] Select WalletConnect option
+- [x] QR code appears
+- [x] Scan with mobile wallet (Trust Wallet, MetaMask Mobile, etc.)
+- [x] Approve connection on mobile
+- [x] Desktop shows connected state
+- [x] Wallet address displays correctly
 
 ### 2.4 Disconnect Tests
-- [ ] Disconnect button works
-- [ ] UI returns to "Connect Wallet" state
-- [ ] Reconnecting works after disconnect
+- [x] Disconnect button works
+- [x] UI returns to "Connect Wallet" state
+- [x] Reconnecting works after disconnect
 
 ### 2.5 Account Switching
-- [ ] Switch account in wallet
-- [ ] UI updates to show new address
-- [ ] Previous session data clears appropriately
+- [x] Switch account in wallet
+- [x] UI updates to show new address
+- [x] Previous session data clears appropriately
 
 ---
 
 ## 3. Payment Flow (Pay to Play)
 
 ### 3.1 USDC Approval
-- [ ] Navigate to game page
-- [ ] Click "Pay to Play" (or similar button)
-- [ ] If first time: USDC approval transaction appears
-- [ ] Approve USDC spending in wallet
-- [ ] Transaction confirms on chain
+- [x] Navigate to game page
+- [x] Click "Pay to Play" (or similar button)
+- [x] If first time: USDC approval transaction appears
+- [x] Approve USDC spending in wallet
+- [x] Transaction confirms on chain
 
 ### 3.2 Pay to Play Transaction
-- [ ] After approval, pay transaction appears
-- [ ] Shows correct amount (0.02 USDC)
-- [ ] Confirm transaction in wallet
-- [ ] Transaction confirms on chain
-- [ ] UI updates: "Tries remaining: 10"
-- [ ] Prize pool increases by 0.02 USDC
+- [x] After approval, pay transaction appears
+- [x] Shows correct amount (0.02 USDC)
+- [x] Confirm transaction in wallet
+- [x] Transaction confirms on chain
+- [x] UI updates: "Tries remaining: 10"
+- [x] Prize pool increases by 0.02 USDC
 
 ### Verification
 ```bash
@@ -118,74 +118,74 @@ cast call 0x5b498d19A03E24b5187d5B71B80b02C437F9cE08 "totalPool()" --rpc-url htt
 ```
 
 ### Error Cases
-- [ ] Insufficient USDC balance shows appropriate error
-- [ ] Rejected transaction shows error message
-- [ ] Network error shows retry option
+- [x] Insufficient USDC balance shows appropriate error
+- [x] Rejected transaction shows error message
+- [x] Network error shows retry option
 
 ---
 
 ## 4. Game Play (game.html)
 
 ### 4.1 Game Loading
-- [ ] Game canvas loads correctly
-- [ ] Instructions/start screen appears
-- [ ] Leaderboard sidebar displays
+- [x] Game canvas loads correctly
+- [x] Instructions/start screen appears
+- [x] Leaderboard sidebar displays
 
 ### 4.2 Gameplay
-- [ ] Press space/click to start
-- [ ] Bird responds to input (flap)
-- [ ] Pipes generate and move correctly
-- [ ] Score increments when passing pipes
-- [ ] Collision detection works (game ends on hit)
-- [ ] Game over screen shows final score
+- [x] Press space/click to start
+- [x] Bird responds to input (flap)
+- [x] Pipes generate and move correctly
+- [x] Score increments when passing pipes
+- [x] Collision detection works (game ends on hit)
+- [x] Game over screen shows final score
 
 ### 4.3 Tries System
-- [ ] Tries counter shows remaining attempts
-- [ ] Each game decrements tries by 1
-- [ ] When tries = 0, prompt to pay again
-- [ ] Cannot play without tries
+- [x] Tries counter shows remaining attempts
+- [x] Each game decrements tries by 1
+- [x] When tries = 0, prompt to pay again
+- [x] Cannot play without tries
 
 ### 4.4 Score Submission
-- [ ] After game over, score submits automatically
-- [ ] Loading indicator during submission
-- [ ] Success message after submission
-- [ ] Leaderboard updates with new score (if high enough)
+- [x] After game over, score submits automatically
+- [x] Loading indicator during submission
+- [x] Success message after submission
+- [x] Leaderboard updates with new score (if high enough)
 
 ---
 
 ## 5. Leaderboard
 
 ### 5.1 Display
-- [ ] Shows top 10 (or configured number) players
-- [ ] Each entry shows: Rank, Address (truncated), Score
-- [ ] Current user's entry highlighted (if on leaderboard)
-- [ ] Scores sorted descending
+- [x] Shows top 10 (or configured number) players
+- [x] Each entry shows: Rank, Address (truncated), Score
+- [x] Current user's entry highlighted (if on leaderboard)
+- [x] Scores sorted descending
 
 ### 5.2 Real-time Updates
-- [ ] New scores appear without page refresh
-- [ ] Rankings update correctly when new high score submitted
+- [x] New scores appear without page refresh
+- [x] Rankings update correctly when new high score submitted
 
 ### 5.3 Edge Cases
-- [ ] Empty leaderboard shows appropriate message
+- [x] Empty leaderboard shows appropriate message
 - [ ] Very long scores display correctly
-- [ ] Duplicate scores handled correctly
+- [ ] Duplicate scores handled correctly 
 
 ---
 
 ## 6. Profile Page (profile.html)
 
 ### 6.1 Without Wallet Connected
-- [ ] Shows "Connect Wallet" prompt
-- [ ] No personal data displayed
+- [x] Shows "Connect Wallet" prompt
+- [x] No personal data displayed
 
 ### 6.2 With Wallet Connected
-- [ ] Wallet address displays
-- [ ] Total games played shows
-- [ ] Total tries purchased shows
-- [ ] Best score displays
-- [ ] Current rank shows (if on leaderboard)
-- [ ] Total donations made displays
-- [ ] Total prizes won displays
+- [x] Wallet address displays
+- [x] Total games played shows
+- [x] Total tries purchased shows
+- [x] Best score displays
+- [x] Current rank shows (if on leaderboard)
+- [x] Total donations made displays
+- [x] Total prizes won displays
 
 ### 6.3 Claim Rewards
 - [ ] If rewards available: "Claim" button appears
@@ -207,49 +207,49 @@ cast call 0x5b498d19A03E24b5187d5B71B80b02C437F9cE08 "rewards(address)" YOUR_ADD
 ## 7. Donation Flow
 
 ### 7.1 Make a Donation
-- [ ] Click "Donate" button (on home or game page)
-- [ ] Donation modal/form appears
-- [ ] Enter custom amount
-- [ ] Approval transaction (if needed)
-- [ ] Donation transaction
-- [ ] Confirm in wallet
-- [ ] Transaction confirms
-- [ ] Prize pool increases by donation amount
-- [ ] Success message shown
+- [x] Click "Donate" button (on home or game page)
+- [x] Donation modal/form appears
+- [x] Enter custom amount
+- [x] Approval transaction (if needed)
+- [x] Donation transaction
+- [x] Confirm in wallet
+- [x] Transaction confirms
+- [x] Prize pool increases by donation amount
+- [x] Success message shown
 
 ### 7.2 Verification
-- [ ] Donation appears in profile history
-- [ ] Prize pool reflects new total
+- [x] Donation appears in profile history
+- [x] Prize pool reflects new total
 
 ---
 
 ## 8. Admin Dashboard (admin.html)
 
 ### 8.1 Access Control
-- [ ] Non-owner cannot access admin functions
-- [ ] Owner wallet can access all functions
+- [x] Non-owner cannot access admin functions
+- [x] Owner wallet can access all functions
 
 ### 8.2 View Current Settings
-- [ ] Cycle duration displays
-- [ ] Number of winners displays
-- [ ] Fee percentage displays
-- [ ] Current cycle start/end time displays
+- [x] Cycle duration displays
+- [x] Number of winners displays
+- [x] Fee percentage displays
+- [x] Current cycle start/end time displays
 
 ### 8.3 Update Cycle Duration
-- [ ] Change cycle duration (1-365 days)
-- [ ] Submit change
-- [ ] Confirm transaction
-- [ ] New duration reflected in UI
+- [x] Change cycle duration (1-365 days)
+- [x] Submit change
+- [x] Confirm transaction
+- [x] New duration reflected in UI
 
 ### 8.4 Update Number of Winners
-- [ ] Change winner count (1-10)
-- [ ] Submit change
-- [ ] Setting updates in database
+- [x] Change winner count (1-10)
+- [x] Submit change
+- [x] Setting updates in database
 
 ### 8.5 Update Fee Percentage
-- [ ] Change fee (0-50%)
-- [ ] Submit change
-- [ ] Setting updates in database
+- [x] Change fee (0-50%)
+- [x] Submit change
+- [x] Setting updates in database
 
 ### 8.6 Force Allocation (Testing)
 - [ ] Click "Force Allocate" (if available)
@@ -441,6 +441,31 @@ cast call 0x036CbD53842c5426634e7929541eC2318f3dCF7e "balanceOf(address)" YOUR_A
 ### View on Explorer
 - Contract: https://sepolia.basescan.org/address/0x5b498d19A03E24b5187d5B71B80b02C437F9cE08
 - USDC: https://sepolia.basescan.org/address/0x036CbD53842c5426634e7929541eC2318f3dCF7e
+
+### Check Admin Configuration (Firestore)
+```bash
+# Get all admin settings (cycle duration, number of winners, fee percentage)
+curl -s "https://us-central1-flappy-bird-leaderboard-463e0.cloudfunctions.net/getAdminConfig" | jq
+
+# Expected response:
+# {
+#   "success": true,
+#   "config": {
+#     "cycleDurationDays": 7,
+#     "numberOfWinners": 3,
+#     "feePercentage": 10
+#   }
+# }
+```
+
+### Check Play Cost (Contract)
+```bash
+# Play cost in USDC (returns value in 6 decimals, divide by 1000000 for USDC)
+cast call 0x5b498d19A03E24b5187d5B71B80b02C437F9cE08 "playCost()" --rpc-url https://sepolia.base.org
+
+# Convert hex to decimal (example: 0x4e20 = 20000 = 0.02 USDC)
+cast --to-dec $(cast call 0x5b498d19A03E24b5187d5B71B80b02C437F9cE08 "playCost()" --rpc-url https://sepolia.base.org)
+```
 
 ---
 

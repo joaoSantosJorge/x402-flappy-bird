@@ -408,13 +408,25 @@
                     <button id="force-allocate-btn" class="admin-btn admin-btn-danger">🚨 Force Allocate Now</button>
                 </div>
 
-                <!-- Additional: Reset Cycle -->
+                <!-- Additional: Reset Contract Cycle -->
                 <div class="admin-card">
-                    <div class="card-title">🔄 Reset Cycle</div>
+                    <div class="card-title">🔄 Reset Contract</div>
                     <div class="card-description">
-                        Start a new cycle without allocating funds. Only use if allocation has already occurred.
+                        Reset the smart contract's fundsAllocated flag by calling sweepUnclaimed. Required before starting a new cycle after allocation.
                     </div>
-                    <button id="reset-cycle-btn" class="admin-btn admin-btn-warning">🔄 Reset Cycle State</button>
+                    <div class="current-value">
+                        ⚠️ Any unclaimed rewards will be swept back to pool
+                    </div>
+                    <button id="reset-contract-btn" class="admin-btn admin-btn-warning">🔄 Reset Contract Cycle</button>
+                </div>
+
+                <!-- Additional: Reset Database Cycle -->
+                <div class="admin-card">
+                    <div class="card-title">📅 Reset Database Cycle</div>
+                    <div class="card-description">
+                        Reset the database cycle timer to start a new cycle from now.
+                    </div>
+                    <button id="reset-cycle-btn" class="admin-btn admin-btn-warning">📅 Reset Cycle Timer</button>
                 </div>
             </div>
         </div>
@@ -847,27 +859,53 @@
             }
         });
 
-        // Reset Cycle
+        // Reset Contract Cycle (sweepUnclaimed)
+        document.getElementById('reset-contract-btn').addEventListener('click', async () => {
+            if (!confirm('⚠️ This will call sweepUnclaimed on the contract, resetting fundsAllocated and sweeping any unclaimed rewards back to the pool. Continue?')) {
+                return;
+            }
+
+            try {
+                showToast('Resetting contract cycle...');
+                const response = await fetch(`${FIREBASE_FUNCTIONS_URL}/resetContractCycle`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ adminWallet: userAccount })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showToast(result.message || 'Contract cycle reset successfully');
+                    await loadCurrentValues();
+                } else {
+                    throw new Error(result.error || 'Reset failed');
+                }
+            } catch (error) {
+                showToast(`Error: ${error.message}`, true);
+            }
+        });
+
+        // Reset Database Cycle
         document.getElementById('reset-cycle-btn').addEventListener('click', async () => {
             if (!confirm('This will reset the cycle state. Only use after allocation has occurred. Continue?')) {
                 return;
             }
 
             try {
-                const now = Date.now();
-                const configDoc = await db.collection('config').doc('settings').get();
-                const durationDays = configDoc.exists && configDoc.data().cycleDurationDays 
-                    ? configDoc.data().cycleDurationDays 
-                    : 7;
-
-                await db.collection('cycleState').doc('current').set({
-                    startTime: now,
-                    endTime: now + (durationDays * 24 * 60 * 60 * 1000),
-                    lastUpdated: now
+                showToast('Resetting cycle...');
+                const response = await fetch(`${FIREBASE_FUNCTIONS_URL}/resetCycleState`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ adminWallet: userAccount })
                 });
 
-                showToast('Cycle state reset');
-                await loadCurrentValues();
+                const result = await response.json();
+                if (result.success) {
+                    showToast('Cycle state reset successfully');
+                    await loadCurrentValues();
+                } else {
+                    throw new Error(result.error || 'Reset failed');
+                }
             } catch (error) {
                 showToast(`Error: ${error.message}`, true);
             }

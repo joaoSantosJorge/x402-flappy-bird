@@ -81,6 +81,10 @@ python3 -m http.server 8000
 
 # Open browser
 # Navigate to http://localhost:8000/frontend/
+
+
+# Firebase emulator (to test dev)
+firebase serve --only hosting
 ```
 
 ### Firebase Functions (Backend)
