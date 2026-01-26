@@ -7,6 +7,7 @@ let userAccount;
 let provider; // Current wallet provider (MetaMask, Phantom, or WalletConnect)
 let hasPaid = false; // Track if user has paid to play
 let triesRemaining = 0; // Track remaining tries (10 tries per payment)
+let paymentInProgress = false; // Track if payment is currently processing
 
 // Contract addresses (from centralized config)
 const FLAPPY_BIRD_CONTRACT_ADDRESS = CONFIG.CONTRACT_ADDRESS;
@@ -290,17 +291,24 @@ function updateConnectButton() {
 
 // Pay 0.02 USDC to play
 async function payToPlay() {
+    if (paymentInProgress) {
+        alert('Payment already in progress. Please wait...');
+        return;
+    }
+
     if (!web3 || !userAccount) {
         alert('Please connect a wallet first');
         return;
     }
 
+    paymentInProgress = true;
+
     // TODO: Switch to Base Mainnet when going to production
     // Base Mainnet: chainId 8453 (0x2105), USDC: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
-    
+
     const payBtn = document.getElementById('pay-btn');
     const originalText = payBtn?.textContent || 'Pay to Play';
-    
+
     try {
         if (payBtn) {
             payBtn.disabled = true;
@@ -328,6 +336,7 @@ async function payToPlay() {
                 alert('Please switch to the Base Sepolia network in your Phantom wallet.\n\n1. Click the network selector in Phantom\n2. Select "Base Sepolia"\n3. Then try again');
                 if (payBtn) payBtn.textContent = originalText;
                 if (payBtn) payBtn.disabled = false;
+                paymentInProgress = false;
                 return;
             } else if (window.ethereum) {
                 // Try to switch for MetaMask or compatible wallets
@@ -359,6 +368,7 @@ async function payToPlay() {
                             alert('Failed to add Base Sepolia network. Please add it manually in your wallet settings.');
                             if (payBtn) payBtn.textContent = originalText;
                             if (payBtn) payBtn.disabled = false;
+                            paymentInProgress = false;
                             return;
                         }
                     } else if (switchError.code === 4001) {
@@ -366,12 +376,14 @@ async function payToPlay() {
                         alert('Network switch cancelled.');
                         if (payBtn) payBtn.textContent = originalText;
                         if (payBtn) payBtn.disabled = false;
+                        paymentInProgress = false;
                         return;
                     } else {
                         console.error('Failed to switch to Base Sepolia network:', switchError);
                         alert('Please switch to Base Sepolia testnet manually in your wallet');
                         if (payBtn) payBtn.textContent = originalText;
                         if (payBtn) payBtn.disabled = false;
+                        paymentInProgress = false;
                         return;
                     }
                 }
@@ -379,6 +391,7 @@ async function payToPlay() {
                 alert('Please switch to Base Sepolia testnet in your wallet');
                 if (payBtn) payBtn.textContent = originalText;
                 if (payBtn) payBtn.disabled = false;
+                paymentInProgress = false;
                 return;
             }
         }
@@ -464,10 +477,18 @@ async function payToPlay() {
                 payBtn.textContent = originalText;
                 payBtn.disabled = false;
             }
+
+            // Enable the start button after successful payment
+            const startBtn = document.getElementById('start-btn');
+            if (startBtn) {
+                startBtn.disabled = false;
+            }
+
+            paymentInProgress = false;
             alert(`Payment successful! You have ${TriesPerPaymentManager.getTriesPerPayment()} tries to play.`);
         } catch (txError) {
             console.error('Transaction error:', txError);
-            
+
             // Better error messages for WalletConnect issues
             if (txError.message?.includes('Failed to publish payload')) {
                 alert('Network relay error. Please try again. If the problem persists, try using MetaMask instead.');
@@ -478,15 +499,17 @@ async function payToPlay() {
             } else {
                 alert('Payment failed: ' + (txError.message || 'Unknown error'));
             }
-            
+
             if (payBtn) payBtn.textContent = originalText;
             if (payBtn) payBtn.disabled = false;
+            paymentInProgress = false;
         }
     } catch (error) {
         console.error('Payment error:', error);
         alert('Payment error: ' + (error.message || 'Unknown error'));
         if (payBtn) payBtn.textContent = originalText;
         if (payBtn) payBtn.disabled = false;
+        paymentInProgress = false;
     }
 }
 

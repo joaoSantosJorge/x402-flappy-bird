@@ -233,6 +233,12 @@ function showGameOverPopup() {
     
     // Play again button
     playAgainBtn.onclick = async () => {
+        // Check if payment is in progress
+        if (typeof paymentInProgress !== 'undefined' && paymentInProgress) {
+            alert('Please wait for payment to complete...');
+            return;
+        }
+
         closeModal();
 
         // Check if user can play
@@ -324,6 +330,12 @@ function resetGame() {
 
 // Start game
 document.getElementById('start-btn').addEventListener('click', () => {
+    // Check if payment is in progress
+    if (typeof paymentInProgress !== 'undefined' && paymentInProgress) {
+        alert('Please wait for payment to complete...');
+        return;
+    }
+
     // Check if user has paid and has tries remaining
     if (typeof triesRemaining !== 'undefined' && triesRemaining <= 0) {
         alert(`You have no tries remaining. Please pay ${PlayCostManager.getPlayCostDisplay()} USDC for ${TriesPerPaymentManager.getTriesPerPayment()} more tries!`);
@@ -333,7 +345,7 @@ document.getElementById('start-btn').addEventListener('click', () => {
         alert(`Please pay ${PlayCostManager.getPlayCostDisplay()} USDC to play the game!`);
         return;
     }
-    
+
     if (gameOver) {
         resetGame();
     }
@@ -357,8 +369,14 @@ canvas.addEventListener('click', () => {
     if (modal && modal.style.display === 'flex') {
         return;
     }
-    
+
     if (gameOver) {
+        // Check if payment is in progress
+        if (typeof paymentInProgress !== 'undefined' && paymentInProgress) {
+            alert('Please wait for payment to complete...');
+            return;
+        }
+
         // Check if user has paid and has tries remaining before allowing restart
         if (typeof triesRemaining !== 'undefined' && triesRemaining <= 0) {
             alert(`You have no tries remaining. Please pay ${PlayCostManager.getPlayCostDisplay()} USDC for ${TriesPerPaymentManager.getTriesPerPayment()} more tries!`);
@@ -368,7 +386,7 @@ canvas.addEventListener('click', () => {
             alert(`Please pay ${PlayCostManager.getPlayCostDisplay()} USDC to play the game!`);
             return;
         }
-        
+
         resetGame();
         gameRunning = true;
         gameLoop();
