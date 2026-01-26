@@ -141,7 +141,7 @@
             <h2>🎮 How to Play</h2>
             <ol>
                 <li><strong>Connect Your Wallet:</strong> Connect using MetaMask, WalletConnect, or Coinbase Wallet to participate</li>
-                <li><strong>Purchase Tries:</strong> Pay <span class="highlight"><span class="play-cost-display">0.02</span> USDC</span> to receive <span class="highlight">10 game tries</span></li>
+                <li><strong>Purchase Tries:</strong> Pay <span class="highlight"><span class="play-cost-display">0.02</span> USDC</span> to receive <span class="highlight"><span class="tries-per-payment-display">10</span> game tries</span></li>
                 <li><strong>Play & Score:</strong> Navigate the square through pipes to achieve the highest score possible</li>
                 <li><strong>Compete:</strong> Your best score is automatically submitted to the monthly leaderboard</li>
                 <li><strong>Win Prizes:</strong> Top players share the prize pool at the end of each cycle</li>
@@ -168,7 +168,7 @@
             <h3>Pool Accumulation</h3>
             <p>The prize pool grows from:</p>
             <ul>
-                <li>Player entry fees (<span class="highlight"><span class="play-cost-display">0.02</span> USDC</span> per 10 tries)</li>
+                <li>Player entry fees (<span class="highlight"><span class="play-cost-display">0.02</span> USDC</span> per <span class="tries-per-payment-display">10</span> tries)</li>
                 <li>Direct donations to the contract</li>
                 <li>Unclaimed rewards from previous cycles (if not claimed within 7 days)</li>
             </ul>
@@ -302,10 +302,28 @@
         </div>
     </div>
 
+    <!-- Load Firebase for TriesPerPaymentManager -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     <!-- Load Web3 for PlayCostManager -->
     <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
-    <!-- Centralized config with PlayCostManager -->
+    <!-- Centralized config with PlayCostManager and TriesPerPaymentManager -->
     <script src="js/config.js"></script>
+
+    <script>
+        // Initialize Firebase for TriesPerPaymentManager
+        const firebaseConfig = {
+            apiKey: "AIzaSyCprQvJl7-ZC-6QK4ct5tBngJzOgF33MpM",
+            authDomain: "flappy-bird-leaderboard-463e0.firebaseapp.com",
+            projectId: "flappy-bird-leaderboard-463e0",
+            storageBucket: "flappy-bird-leaderboard-463e0.firebasestorage.app",
+            messagingSenderId: "344067272312",
+            appId: "1:344067272312:web:5d4fc513df1df38a87c78d"
+        };
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+    </script>
 
     <script>
         // Theme toggle functionality

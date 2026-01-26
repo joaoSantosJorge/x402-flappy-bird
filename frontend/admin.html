@@ -384,7 +384,23 @@
                     <button id="change-fee-btn" class="admin-btn">💾 Update Fee</button>
                 </div>
 
-                <!-- 6. Allocate Funds -->
+                <!-- 6. Tries Per Payment -->
+                <div class="admin-card">
+                    <div class="card-title">🎮 Tries Per Payment</div>
+                    <div class="card-description">
+                        Number of game tries granted per payment. Players receive this many tries when they pay to play.
+                    </div>
+                    <div class="current-value">
+                        Current: <strong id="current-tries">10 tries</strong>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Tries (1-100)</label>
+                        <input type="number" id="new-tries" class="input-field" min="1" max="100" placeholder="10">
+                    </div>
+                    <button id="change-tries-btn" class="admin-btn">💾 Update Tries</button>
+                </div>
+
+                <!-- 7. Allocate Funds -->
                 <div class="admin-card">
                     <div class="card-title">💸 Allocate Funds</div>
                     <div class="card-description">
@@ -639,6 +655,9 @@
                     if (config.feePercentage !== undefined) {
                         document.getElementById('current-fee').textContent = `${(config.feePercentage / 100).toFixed(1)}%`;
                     }
+                    if (config.triesPerPayment) {
+                        document.getElementById('current-tries').textContent = `${config.triesPerPayment} tries`;
+                    }
                 }
 
                 // Cycle state
@@ -794,7 +813,7 @@
         // 5. Change Fee Percentage
         document.getElementById('change-fee-btn').addEventListener('click', async () => {
             const fee = document.getElementById('new-fee').value;
-            
+
             if (fee === '' || fee < 0 || fee > 5000) {
                 showToast('Invalid fee (0-5000 basis points)', true);
                 return;
@@ -819,7 +838,40 @@
             }
         });
 
-        // 6. Allocate Funds
+        // 6. Change Tries Per Payment
+        document.getElementById('change-tries-btn').addEventListener('click', async () => {
+            const tries = document.getElementById('new-tries').value;
+
+            if (!tries || tries < 1 || tries > 100) {
+                showToast('Invalid tries (1-100)', true);
+                return;
+            }
+
+            try {
+                const response = await fetch(`${FIREBASE_FUNCTIONS_URL}/updateTriesPerPayment`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tries: parseInt(tries), adminWallet: userAccount })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showToast(`Tries per payment updated to ${tries}`);
+                    document.getElementById('current-tries').textContent = `${tries} tries`;
+
+                    // Broadcast to other tabs via TriesPerPaymentManager
+                    if (typeof TriesPerPaymentManager !== 'undefined') {
+                        TriesPerPaymentManager.setTriesPerPayment(parseInt(tries));
+                    }
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (error) {
+                showToast(`Error: ${error.message}`, true);
+            }
+        });
+
+        // 7. Allocate Funds
         document.getElementById('allocate-btn').addEventListener('click', async () => {
             if (!confirm('This will allocate funds to winners based on current leaderboard. Continue?')) {
                 return;

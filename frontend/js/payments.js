@@ -435,7 +435,7 @@ async function payToPlay() {
             
             console.log('Payment successful! You can now play the game.');
             hasPaid = true;
-            triesRemaining = 10; // Grant 10 tries per payment
+            triesRemaining = TriesPerPaymentManager.getTriesPerPayment();
             updateTriesDisplay();
             
             // Record payment in user profile database
@@ -464,7 +464,7 @@ async function payToPlay() {
                 payBtn.textContent = originalText;
                 payBtn.disabled = false;
             }
-            alert('Payment successful! You have 10 tries to play.');
+            alert(`Payment successful! You have ${TriesPerPaymentManager.getTriesPerPayment()} tries to play.`);
         } catch (txError) {
             console.error('Transaction error:', txError);
             

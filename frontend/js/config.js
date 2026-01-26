@@ -154,9 +154,119 @@ const PlayCostManager = (function() {
     };
 })();
 
+// TriesPerPaymentManager - Dynamic tries per payment management with cross-tab sync
+const TriesPerPaymentManager = (function() {
+    const STORAGE_KEY = 'triesPerPayment';
+    let _triesPerPayment = CONFIG.TRIES_PER_PAYMENT;
+    let _callbacks = [];
+    let _initialized = false;
+
+    function updateValues(tries) {
+        _triesPerPayment = Number(tries);
+        // Notify all subscribers
+        _callbacks.forEach(cb => cb(_triesPerPayment));
+        // Update all .tries-per-payment-display elements on the page
+        updateDisplayElements();
+    }
+
+    function updateDisplayElements() {
+        const elements = document.querySelectorAll('.tries-per-payment-display');
+        elements.forEach(el => {
+            el.textContent = _triesPerPayment;
+        });
+    }
+
+    async function fetchFromFirebase() {
+        try {
+            // Check if Firebase is available
+            if (typeof firebase === 'undefined' || !firebase.firestore) {
+                console.log('TriesPerPaymentManager: Firebase not loaded, will retry...');
+                return false;
+            }
+            const db = firebase.firestore();
+            const configDoc = await db.collection('config').doc('settings').get();
+            if (configDoc.exists && configDoc.data().triesPerPayment) {
+                const tries = configDoc.data().triesPerPayment;
+                console.log('TriesPerPaymentManager: Fetched tries per payment from Firebase:', tries);
+                updateValues(tries);
+                localStorage.setItem(STORAGE_KEY, tries.toString());
+                return true;
+            }
+            return false;
+        } catch (e) {
+            console.error('TriesPerPaymentManager: Failed to fetch tries per payment from Firebase:', e);
+            return false;
+        }
+    }
+
+    // Listen for changes from other tabs
+    window.addEventListener('storage', (e) => {
+        if (e.key === STORAGE_KEY && e.newValue) {
+            console.log('TriesPerPaymentManager: Received tries per payment update from another tab:', e.newValue);
+            updateValues(e.newValue);
+        }
+    });
+
+    return {
+        // Initialize the manager - loads from cache, then verifies with Firebase
+        init: async function() {
+            if (_initialized) return;
+            _initialized = true;
+
+            // Load from localStorage first for instant display
+            const cached = localStorage.getItem(STORAGE_KEY);
+            if (cached) {
+                console.log('TriesPerPaymentManager: Using cached value:', cached);
+                updateValues(cached);
+            }
+
+            // Then verify with Firebase (non-blocking for UI)
+            const fetchWithRetry = async (attempts = 3) => {
+                for (let i = 0; i < attempts; i++) {
+                    if (typeof firebase !== 'undefined' && firebase.firestore) {
+                        const success = await fetchFromFirebase();
+                        if (success) return;
+                    }
+                    // Wait 1 second before retry
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+                console.warn('TriesPerPaymentManager: Could not fetch from Firebase, using fallback');
+            };
+
+            fetchWithRetry();
+        },
+
+        // Get tries per payment
+        getTriesPerPayment: function() {
+            return _triesPerPayment;
+        },
+
+        // Called by admin.html after successful config update - broadcasts to other tabs
+        setTriesPerPayment: function(tries) {
+            console.log('TriesPerPaymentManager: Setting new tries per payment:', tries);
+            updateValues(tries);
+            localStorage.setItem(STORAGE_KEY, tries.toString());
+        },
+
+        // Subscribe to tries per payment changes
+        onUpdate: function(callback) {
+            _callbacks.push(callback);
+        },
+
+        // Force refresh from Firebase
+        refresh: async function() {
+            return await fetchFromFirebase();
+        }
+    };
+})();
+
 // Auto-initialize when DOM is ready
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => PlayCostManager.init());
+    document.addEventListener('DOMContentLoaded', () => {
+        PlayCostManager.init();
+        TriesPerPaymentManager.init();
+    });
 } else {
     PlayCostManager.init();
+    TriesPerPaymentManager.init();
 }

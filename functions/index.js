@@ -133,6 +133,37 @@ exports.updateFeePercentage = functions.https.onRequest(async (req, res) => {
   }
 });
 
+// Update tries per payment
+exports.updateTriesPerPayment = functions.https.onRequest(async (req, res) => {
+  res.set("Access-Control-Allow-Origin", "*");
+  res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.set("Access-Control-Allow-Headers", "Content-Type");
+
+  if (req.method === "OPTIONS") {
+    res.status(204).send("");
+    return;
+  }
+
+  try {
+    const {tries, adminWallet} = req.body;
+
+    if (!tries || tries < 1 || tries > 100) {
+      return res.status(400).json({error: "Invalid tries per payment (1-100)"});
+    }
+
+    await db.collection("config").doc("settings").set({
+      triesPerPayment: parseInt(tries),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedBy: adminWallet,
+    }, {merge: true});
+
+    res.json({success: true, triesPerPayment: tries});
+  } catch (error) {
+    console.error("Error updating tries per payment:", error);
+    res.status(500).json({error: error.message});
+  }
+});
+
 // Reset contract cycle (call sweepUnclaimed to reset fundsAllocated flag)
 exports.resetContractCycle = functions.https.onRequest(async (req, res) => {
   // CORS
@@ -693,6 +724,11 @@ exports.recordPayment = functions.https.onRequest(async (req, res) => {
       return;
     }
 
+    // Get tries per payment from config (default to 10)
+    const configDoc = await db.collection("config").doc("settings").get();
+    const triesPerPaymentConfig = configDoc.exists && configDoc.data().triesPerPayment ?
+      configDoc.data().triesPerPayment : 10;
+
     let stats;
     let triesGranted = 0;
 
@@ -700,9 +736,9 @@ exports.recordPayment = functions.https.onRequest(async (req, res) => {
       // For donations: add to donationsUSDC but don't grant tries
       stats = await updateUserPaymentStats(walletAddress, amountUSDC, cycleName, 0);
     } else {
-      // For regular payments: grant 10 tries
-      stats = await updateUserPaymentStats(walletAddress, amountUSDC, cycleName, 10);
-      triesGranted = 10;
+      // For regular payments: grant configured tries
+      stats = await updateUserPaymentStats(walletAddress, amountUSDC, cycleName, triesPerPaymentConfig);
+      triesGranted = triesPerPaymentConfig;
     }
 
     // Also store individual payment record for audit

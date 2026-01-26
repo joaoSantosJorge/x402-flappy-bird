@@ -38,11 +38,14 @@ Each game cycle operates through a smart contract that handles micropayments and
 - ✅ **Real-time Leaderboard** - Firebase Firestore integration
 - ✅ **Retro UI Design** - Minimalist black/white theme with dark mode toggle
 - ✅ **Anti-Cheat** - Address blocking functionality
+- ✅ **Dynamic Play Cost** - Admin-configurable play cost with cross-tab sync
+- ✅ **Configurable Tries Per Payment** - Admin-configurable tries granted per payment
 
 ### Smart Contract Controls (Owner Only)
 
 - Set fee percentage
 - Configure cycle duration
+- Configure tries per payment
 - Define winner allocation (1-10 winners with custom percentages)
 - Block/unblock addresses
 - Emergency functions

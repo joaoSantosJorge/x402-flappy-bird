@@ -241,7 +241,7 @@ function showGameOverPopup() {
             if (typeof payToPlay === 'function') {
                 await payToPlay();
             } else {
-                alert(`You have no tries remaining. Please pay ${PlayCostManager.getPlayCostDisplay()} USDC for 10 more tries!`);
+                alert(`You have no tries remaining. Please pay ${PlayCostManager.getPlayCostDisplay()} USDC for ${TriesPerPaymentManager.getTriesPerPayment()} more tries!`);
             }
             return;
         }
@@ -326,7 +326,7 @@ function resetGame() {
 document.getElementById('start-btn').addEventListener('click', () => {
     // Check if user has paid and has tries remaining
     if (typeof triesRemaining !== 'undefined' && triesRemaining <= 0) {
-        alert(`You have no tries remaining. Please pay ${PlayCostManager.getPlayCostDisplay()} USDC for 10 more tries!`);
+        alert(`You have no tries remaining. Please pay ${PlayCostManager.getPlayCostDisplay()} USDC for ${TriesPerPaymentManager.getTriesPerPayment()} more tries!`);
         return;
     }
     if (typeof hasPaid !== 'undefined' && !hasPaid) {
@@ -361,7 +361,7 @@ canvas.addEventListener('click', () => {
     if (gameOver) {
         // Check if user has paid and has tries remaining before allowing restart
         if (typeof triesRemaining !== 'undefined' && triesRemaining <= 0) {
-            alert(`You have no tries remaining. Please pay ${PlayCostManager.getPlayCostDisplay()} USDC for 10 more tries!`);
+            alert(`You have no tries remaining. Please pay ${PlayCostManager.getPlayCostDisplay()} USDC for ${TriesPerPaymentManager.getTriesPerPayment()} more tries!`);
             return;
         }
         if (typeof hasPaid !== 'undefined' && !hasPaid) {
