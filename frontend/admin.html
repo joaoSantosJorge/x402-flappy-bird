@@ -803,6 +803,10 @@
                 if (result.success) {
                     showToast(`Number of winners updated to ${winners}`);
                     document.getElementById('current-winners').textContent = `${winners} winners`;
+                    // Broadcast to other tabs via WinnerAllocationManager
+                    if (typeof WinnerAllocationManager !== 'undefined') {
+                        WinnerAllocationManager.setNumberOfWinners(parseInt(winners));
+                    }
                 } else {
                     throw new Error(result.error);
                 }
@@ -831,6 +835,10 @@
                 if (result.success) {
                     showToast(`Fee updated to ${(fee / 100).toFixed(1)}%`);
                     document.getElementById('current-fee').textContent = `${(fee / 100).toFixed(1)}%`;
+                    // Broadcast to other tabs via WinnerAllocationManager
+                    if (typeof WinnerAllocationManager !== 'undefined') {
+                        WinnerAllocationManager.setFeePercentage(parseInt(fee));
+                    }
                 } else {
                     throw new Error(result.error);
                 }
