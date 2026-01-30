@@ -235,9 +235,9 @@ flappybird-pool-competition/
 | Setting | Location | Notes |
 |---------|----------|-------|
 | Contract address | `frontend/js/config.js`, `functions/.env` | Must match deployed contract |
-| USDC address | `frontend/js/config.js` | Base Sepolia: `0x036CbD53842c5426634e7929541eC2318f3dCF7e` |
-| Chain ID | `frontend/js/config.js` | Base Sepolia: `84532` |
-| RPC URL | `frontend/js/config.js`, `functions/.env` | `https://sepolia.base.org` |
+| USDC address | `frontend/js/config.js` | Base Mainnet: `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` |
+| Chain ID | `frontend/js/config.js` | Base Mainnet: `8453` |
+| RPC URL | `frontend/js/config.js`, `functions/.env` | `https://mainnet.base.org` |
 | Firebase config | `frontend/js/config.js` | API keys, project ID |
 | Keystore (wallet) | `functions/.env` | `KEYSTORE_DATA` (base64), `KEYSTORE_PASSWORD` |
 | Cycle duration | Firestore `config/settings` | Set via admin.html or Cloud Function |
@@ -252,7 +252,7 @@ flappybird-pool-competition/
 |-------|--------------|
 | **Frontend** | HTML5, CSS3, JavaScript (ES6+), Web3.js, Firebase SDK |
 | **Backend** | Node.js 20+, Firebase Cloud Functions, Firestore |
-| **Blockchain** | Solidity 0.8+, Base Sepolia (L2), USDC token |
+| **Blockchain** | Solidity 0.8+, Base Mainnet (L2), USDC token |
 | **Testing** | Foundry (Solidity), Jest (JavaScript) |
 | **Deployment** | Firebase Hosting, Foundry for contracts |
 
