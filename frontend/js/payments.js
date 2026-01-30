@@ -76,62 +76,85 @@ function updateWalletDisplay() {
     updateClaimButton();
 }
 
+// Force refresh chain ID directly from wallet (bypasses any caching)
+async function forceGetChainId() {
+    let chainId = null;
+    let chainSource = 'unknown';
+
+    // Method 1: Direct wallet request (most reliable for current network)
+    try {
+        // Try window.ethereum directly first - this is the most up-to-date source
+        if (window.ethereum) {
+            const result = await window.ethereum.request({ method: 'eth_chainId' });
+            chainId = typeof result === 'string' && result.startsWith('0x')
+                ? parseInt(result, 16)
+                : Number(result);
+            chainSource = 'window.ethereum';
+            console.log('Chain ID from window.ethereum:', chainId);
+        }
+    } catch (e) {
+        console.warn('Failed to get chain ID from window.ethereum:', e.message);
+    }
+
+    // Method 2: Try Phantom's ethereum provider
+    if (chainId === null && window.phantom?.ethereum) {
+        try {
+            const result = await window.phantom.ethereum.request({ method: 'eth_chainId' });
+            chainId = typeof result === 'string' && result.startsWith('0x')
+                ? parseInt(result, 16)
+                : Number(result);
+            chainSource = 'phantom.ethereum';
+            console.log('Chain ID from phantom.ethereum:', chainId);
+        } catch (e) {
+            console.warn('Failed to get chain ID from phantom:', e.message);
+        }
+    }
+
+    // Method 3: Try WalletManager's provider
+    if (chainId === null) {
+        try {
+            const currentProvider = WalletManager.getProvider();
+            if (currentProvider && currentProvider.request) {
+                const result = await currentProvider.request({ method: 'eth_chainId' });
+                chainId = typeof result === 'string' && result.startsWith('0x')
+                    ? parseInt(result, 16)
+                    : Number(result);
+                chainSource = 'WalletManager.provider';
+            }
+        } catch (e) {
+            console.warn('Failed to get chain ID from WalletManager provider:', e.message);
+        }
+    }
+
+    // Method 4: Try web3 instance
+    if (chainId === null && web3) {
+        try {
+            const web3ChainId = await web3.eth.getChainId();
+            chainId = Number(web3ChainId);
+            chainSource = 'web3';
+        } catch (e) {
+            console.warn('Failed to get chain ID from web3:', e.message);
+        }
+    }
+
+    return { chainId, chainSource };
+}
+
 // Update claim button state
 async function updateClaimButton() {
     const claimBtn = document.getElementById('claim-reward-btn');
     if (!claimBtn) return;
-    
+
     if (!userAccount || !web3) {
         claimBtn.disabled = true;
         claimBtn.textContent = 'Connect Wallet First';
         return;
     }
-    
+
     try {
-        // Always check network first - this is critical
-        let chainId = null;
-        let chainSource = 'unknown';
-        
-        try {
-            // Try to get chain ID from the connected provider first
-            provider = WalletManager.getProvider();
-            if (provider && provider.request && typeof provider.request === 'function') {
-                const chainIdResult = await provider.request({ method: 'eth_chainId' });
-                // Handle both hex string and number formats
-                if (typeof chainIdResult === 'string' && chainIdResult.startsWith('0x')) {
-                    chainId = parseInt(chainIdResult, 16);
-                } else {
-                    chainId = Number(chainIdResult);
-                }
-                chainSource = 'provider';
-            }
-        } catch (e) {
-            console.warn('Failed to get chain ID from provider:', e.message);
-        }
-        
-        // Fallback to web3 if provider didn't work
-        if (chainId === null && web3) {
-            try {
-                const web3ChainId = await web3.eth.getChainId();
-                chainId = Number(web3ChainId); // Convert BigInt to number
-                chainSource = 'web3';
-            } catch (chainError) {
-                console.warn('Failed to get chain ID from web3:', chainError.message);
-            }
-        }
-        
-        // Final fallback to read-only RPC verification
-        if (chainId === null) {
-            try {
-                const readWeb3 = new Web3(BASE_RPC);
-                const rpcChainId = await readWeb3.eth.getChainId();
-                chainId = Number(rpcChainId);
-                chainSource = 'rpc-fallback';
-            } catch (rpcError) {
-                console.error('Failed to get chain ID from any source:', rpcError.message);
-            }
-        }
-        
+        // Always check network first - force fresh check bypassing cache
+        const { chainId, chainSource } = await forceGetChainId();
+
         console.log('Chain ID check:', { chainId, chainSource, expected: 8453 });
 
         // Check if on correct network (Base Mainnet)
@@ -241,6 +264,37 @@ function updateTriesDisplay() {
         }
     } else if (hasPaid && startBtn) {
         startBtn.disabled = false;
+    }
+}
+
+// Force refresh wallet connection and chain state
+async function forceRefreshWalletState() {
+    console.log('🔄 Force refreshing wallet state...');
+
+    if (!WalletManager.isConnected()) {
+        console.log('No wallet connected');
+        return;
+    }
+
+    // Get fresh provider
+    const currentProvider = WalletManager.getProvider();
+    if (currentProvider) {
+        // Re-create web3 instance with fresh provider
+        web3 = new Web3(currentProvider);
+        provider = currentProvider;
+        userAccount = WalletManager.getAccount();
+
+        console.log('✅ Wallet state refreshed');
+        console.log('Account:', userAccount);
+
+        // Get and log current chain
+        const { chainId, chainSource } = await forceGetChainId();
+        console.log(`Current chain: ${chainId} (from ${chainSource})`);
+
+        // Update UI
+        updateWalletDisplay();
+        updateConnectButton();
+        await updateClaimButton();
     }
 }
 
@@ -702,9 +756,19 @@ window.addEventListener('load', async () => {
                 updateTriesDisplay();
                 updateClaimButton();
             },
-            onChainChange: (chainId) => {
+            onChainChange: async (chainId) => {
                 console.log('🔗 Chain changed to:', chainId);
-                updateClaimButton();
+
+                // Re-initialize web3 with fresh provider to clear any cached state
+                const currentProvider = WalletManager.getProvider();
+                if (currentProvider) {
+                    web3 = new Web3(currentProvider);
+                    provider = currentProvider;
+                    console.log('🔄 Re-initialized web3 after chain change');
+                }
+
+                // Force update the claim button with fresh chain check
+                await updateClaimButton();
             },
             onError: (error) => {
                 console.error('❌ Wallet error:', error);
@@ -721,10 +785,9 @@ window.addEventListener('load', async () => {
             web3 = WalletManager.getWeb3();
             provider = WalletManager.getProvider();
             console.log('✅ Auto-reconnected wallet:', userAccount);
-            
-            updateWalletDisplay();
-            updateConnectButton();
-            updateClaimButton();
+
+            // Force refresh to get accurate chain state (clears any cached values)
+            await forceRefreshWalletState();
         }
     } catch (error) {
         console.error('Wallet initialization error:', error);
