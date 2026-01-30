@@ -527,14 +527,13 @@ exports.getArchivedLeaderboards = functions.https.onRequest(async (req, res) => 
     for (const collection of archiveCollections) {
       const collectionName = collection.id;
 
-      // Get top 10 scores from this archive
+      // Get top scores from this archive (fetch extra to handle ties)
       const scoresSnapshot = await db.collection(collectionName)
           .orderBy("score", "desc")
-          .orderBy("timestamp", "asc")
-          .limit(10)
+          .limit(20)
           .get();
 
-      const topScores = [];
+      let topScores = [];
       const uniquePlayers = new Set();
       let totalScores = 0;
 
@@ -546,15 +545,27 @@ exports.getArchivedLeaderboards = functions.https.onRequest(async (req, res) => 
         totalScores++;
       });
 
-      // Get top 10 winners
+      // Collect scores with timestamps for proper sorting
       scoresSnapshot.forEach((doc) => {
         const data = doc.data();
         topScores.push({
           wallet: data.walletAddress || doc.id,
           score: data.score || 0,
           playerName: data.playerName || null,
+          timestamp: data.timestamp ? data.timestamp.toMillis() : 0,
         });
       });
+
+      // Sort by score (desc), then timestamp (asc) for ties, then take top 10
+      topScores.sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return a.timestamp - b.timestamp; // Earlier timestamp ranks higher
+      });
+      topScores = topScores.slice(0, 10).map(({wallet, score, playerName}) => ({
+        wallet,
+        score,
+        playerName,
+      }));
 
       // Extract dates from collection name (format: scores_DD-MM-YYYY_to_DD-MM-YYYY)
       const parts = collectionName.replace("scores_", "").split("_to_");
