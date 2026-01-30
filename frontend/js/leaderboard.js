@@ -75,6 +75,7 @@ async function submitScore(walletAddress, score) {
 async function getLeaderboard() {
     const querySnapshot = await db.collection('scores')
         .orderBy('score', 'desc')
+        .orderBy('timestamp', 'asc')
         .limit(50)
         .get();
 

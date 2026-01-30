@@ -129,6 +129,7 @@ async function getCycleState() {
 async function getTopWinners(numberOfWinners) {
   const scoresSnapshot = await db.collection("scores")
       .orderBy("score", "desc")
+      .orderBy("timestamp", "asc")
       .limit(numberOfWinners)
       .get();
 

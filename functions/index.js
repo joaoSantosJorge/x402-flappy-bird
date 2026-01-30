@@ -530,6 +530,7 @@ exports.getArchivedLeaderboards = functions.https.onRequest(async (req, res) => 
       // Get top 10 scores from this archive
       const scoresSnapshot = await db.collection(collectionName)
           .orderBy("score", "desc")
+          .orderBy("timestamp", "asc")
           .limit(10)
           .get();
 
@@ -894,9 +895,10 @@ exports.getUserRank = functions.https.onRequest(async (req, res) => {
       return;
     }
 
-    // Get all scores ordered by score descending
+    // Get all scores ordered by score descending, timestamp ascending (tie-breaker)
     const scoresSnapshot = await db.collection("scores")
         .orderBy("score", "desc")
+        .orderBy("timestamp", "asc")
         .get();
 
     let rank = 0;
