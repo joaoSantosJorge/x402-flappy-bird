@@ -136,6 +136,58 @@ const WalletManager = (function() {
         }
     }
 
+    // Switch to Base Mainnet network
+    async function switchToBaseMainnet() {
+        const targetChainId = typeof CONFIG !== 'undefined' ? CONFIG.CHAIN_ID : 8453;
+        const targetChainIdHex = '0x' + targetChainId.toString(16); // '0x2105'
+
+        try {
+            // Get current chain ID
+            const currentChainId = await provider.request({ method: 'eth_chainId' });
+            const currentChainIdNum = typeof currentChainId === 'string' && currentChainId.startsWith('0x')
+                ? parseInt(currentChainId, 16)
+                : Number(currentChainId);
+
+            if (currentChainIdNum === targetChainId) {
+                console.log('✅ Already on Base Mainnet');
+                return true;
+            }
+
+            console.log(`🔄 Switching from chain ${currentChainIdNum} to Base Mainnet (${targetChainId})...`);
+
+            // Try to switch network
+            try {
+                await provider.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: targetChainIdHex }]
+                });
+                console.log('✅ Switched to Base Mainnet');
+                return true;
+            } catch (switchError) {
+                // If network not added, add it (error code 4902)
+                if (switchError.code === 4902) {
+                    await provider.request({
+                        method: 'wallet_addEthereumChain',
+                        params: [{
+                            chainId: targetChainIdHex,
+                            chainName: 'Base',
+                            nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+                            rpcUrls: ['https://mainnet.base.org'],
+                            blockExplorerUrls: ['https://basescan.org']
+                        }]
+                    });
+                    console.log('✅ Added and switched to Base Mainnet');
+                    return true;
+                }
+                throw switchError;
+            }
+        } catch (error) {
+            console.error('Failed to switch to Base Mainnet:', error);
+            // Don't block connection, just warn
+            return false;
+        }
+    }
+
     // Setup provider-specific listeners after connection
     function setupProviderListeners() {
         if (!provider) return;
@@ -272,7 +324,12 @@ const WalletManager = (function() {
         if (!provider) {
             throw new Error('No provider selected');
         }
-        
+
+        // Try to switch to Base Mainnet (for MetaMask/Phantom, not WalletConnect)
+        if (provider.request && !provider.isWalletConnect) {
+            await switchToBaseMainnet();
+        }
+
         web3 = new Web3(provider);
         const accounts = await web3.eth.getAccounts();
         
