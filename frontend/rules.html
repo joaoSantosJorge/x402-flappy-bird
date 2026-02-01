@@ -407,6 +407,107 @@
         </div>
 
         <div class="content-box">
+            <h2>🔍 Verify the Contract Yourself</h2>
+            <p>Don't trust, verify! Here's how you can independently check the smart contract state using command-line tools.</p>
+
+            <h3>Contract Overview</h3>
+            <p>The SquarePrizePool contract manages all prize funds transparently on the Base blockchain. Key state variables:</p>
+            <ul>
+                <li><strong>totalPool</strong> - Current prize pool amount (in USDC, 6 decimals)</li>
+                <li><strong>rewards(address)</strong> - Claimable reward for any wallet address</li>
+                <li><strong>fundsAllocated</strong> - Whether prizes have been distributed to winners</li>
+                <li><strong>playCost</strong> - Current cost to play (in USDC units)</li>
+                <li><strong>owner</strong> - Address that can allocate funds</li>
+            </ul>
+
+            <h3>📊 Check Total Prize Pool</h3>
+            <p>Query the current prize pool amount:</p>
+            <div class="example-box">
+                <code style="word-break: break-all; font-size: 12px;">
+curl -X POST https://mainnet.base.org \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"eth_call","params":[{"to":"0xDD0BbF48f85f5314C3754cd63103Be927B55986C","data":"0xecfb49a3"},"latest"],"id":1}'
+                </code>
+                <p style="margin-top: 10px; font-size: 13px;"><strong>Decode result:</strong> Convert hex to decimal, divide by 1,000,000 for USDC amount</p>
+                <p style="font-size: 12px; opacity: 0.8;">Example: "0x1e8480" → 2,000,000 → <strong>2.00 USDC</strong></p>
+            </div>
+
+            <h3>💰 Check If You Have Rewards to Claim</h3>
+            <p>Replace <code>YOUR_WALLET</code> with your wallet address (remove 0x prefix, pad to 64 chars):</p>
+            <div class="example-box">
+                <code style="word-break: break-all; font-size: 12px;">
+curl -X POST https://mainnet.base.org \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"eth_call","params":[{"to":"0xDD0BbF48f85f5314C3754cd63103Be927B55986C","data":"0x0700037d000000000000000000000000YOUR_WALLET_WITHOUT_0x"},"latest"],"id":1}'
+                </code>
+                <p style="margin-top: 10px; font-size: 13px;"><strong>Example for wallet 0x1234...abcd:</strong></p>
+                <code style="word-break: break-all; font-size: 11px;">
+"data":"0x0700037d0000000000000000000000001234567890abcdef1234567890abcdef12345678"
+                </code>
+            </div>
+
+            <h3>🔄 Check If Funds Are Allocated</h3>
+            <p>Returns true (0x01) if prizes have been distributed, false (0x00) if cycle is active:</p>
+            <div class="example-box">
+                <code style="word-break: break-all; font-size: 12px;">
+curl -X POST https://mainnet.base.org \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"eth_call","params":[{"to":"0xDD0BbF48f85f5314C3754cd63103Be927B55986C","data":"0x8302c8a6"},"latest"],"id":1}'
+                </code>
+            </div>
+
+            <h3>🎮 Check Current Play Cost</h3>
+            <p>Query the current cost to play (in USDC units with 6 decimals):</p>
+            <div class="example-box">
+                <code style="word-break: break-all; font-size: 12px;">
+curl -X POST https://mainnet.base.org \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"eth_call","params":[{"to":"0xDD0BbF48f85f5314C3754cd63103Be927B55986C","data":"0xfb22198b"},"latest"],"id":1}'
+                </code>
+                <p style="margin-top: 10px; font-size: 13px;"><strong>Decode:</strong> "0x4e20" → 20,000 → <strong>0.02 USDC</strong></p>
+            </div>
+
+            <h3>👤 Check Contract Owner</h3>
+            <p>See who controls fund allocation:</p>
+            <div class="example-box">
+                <code style="word-break: break-all; font-size: 12px;">
+curl -X POST https://mainnet.base.org \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"eth_call","params":[{"to":"0xDD0BbF48f85f5314C3754cd63103Be927B55986C","data":"0x8da5cb5b"},"latest"],"id":1}'
+                </code>
+            </div>
+
+            <h3>📜 View Contract Source Code</h3>
+            <p>The contract is verified on BaseScan. You can:</p>
+            <ol>
+                <li>Visit <a href="https://basescan.org/address/0xDD0BbF48f85f5314C3754cd63103Be927B55986C#code" target="_blank" rel="noopener noreferrer" style="color: var(--fg); text-decoration: underline;">Contract on BaseScan</a></li>
+                <li>Click "Contract" tab → "Read Contract" to interact without code</li>
+                <li>Click "Code" to view the full Solidity source</li>
+            </ol>
+
+            <h3>📈 View All Transactions</h3>
+            <p>Track every payment, donation, and reward claim:</p>
+            <ul>
+                <li><a href="https://basescan.org/address/0xDD0BbF48f85f5314C3754cd63103Be927B55986C#tokentxns" target="_blank" rel="noopener noreferrer" style="color: var(--fg); text-decoration: underline;">View USDC Transfers</a> - All payments in/out</li>
+                <li><a href="https://basescan.org/address/0xDD0BbF48f85f5314C3754cd63103Be927B55986C#events" target="_blank" rel="noopener noreferrer" style="color: var(--fg); text-decoration: underline;">View Events</a> - PlayerPaid, FundsAllocated, etc.</li>
+            </ul>
+
+            <h3>🧮 Function Selectors Reference</h3>
+            <p>For developers who want to build their own verification tools:</p>
+            <div class="example-box">
+                <table class="allocation-table" style="font-size: 12px;">
+                    <tr><th>Function</th><th>Selector</th><th>Description</th></tr>
+                    <tr><td>totalPool()</td><td>0xecfb49a3</td><td>Current prize pool</td></tr>
+                    <tr><td>rewards(address)</td><td>0x0700037d</td><td>Claimable amount for address</td></tr>
+                    <tr><td>fundsAllocated()</td><td>0x8302c8a6</td><td>Allocation status</td></tr>
+                    <tr><td>playCost()</td><td>0xfb22198b</td><td>Cost per play</td></tr>
+                    <tr><td>owner()</td><td>0x8da5cb5b</td><td>Contract owner</td></tr>
+                    <tr><td>usdc()</td><td>0x3e413bee</td><td>USDC token address</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="content-box">
             <h2>❓ FAQ</h2>
             
             <h3>Can I play without connecting a wallet?</h3>
