@@ -76,9 +76,19 @@ const PlayCostManager = (function() {
             return false;
         }
         try {
-            const readWeb3 = new Web3(CONFIG.RPC_URL);
-            const contract = new readWeb3.eth.Contract(PLAY_COST_ABI, CONFIG.CONTRACT_ADDRESS);
-            const rawCost = await contract.methods.playCost().call();
+            // Use RPCProvider with fallback if available
+            let rawCost;
+            if (typeof RPCProvider !== 'undefined') {
+                rawCost = await RPCProvider.call(async (web3Instance) => {
+                    const contract = new web3Instance.eth.Contract(PLAY_COST_ABI, CONFIG.CONTRACT_ADDRESS);
+                    return await contract.methods.playCost().call();
+                });
+            } else {
+                // Fallback to direct call if RPCProvider not yet loaded
+                const readWeb3 = new Web3(CONFIG.RPC_URL);
+                const contract = new readWeb3.eth.Contract(PLAY_COST_ABI, CONFIG.CONTRACT_ADDRESS);
+                rawCost = await contract.methods.playCost().call();
+            }
             console.log('PlayCostManager: Fetched play cost from contract:', rawCost);
             updateValues(rawCost);
             localStorage.setItem(STORAGE_KEY, rawCost.toString());
@@ -262,6 +272,139 @@ const TriesPerPaymentManager = (function() {
         // Force refresh from Firebase
         refresh: async function() {
             return await fetchFromFirebase();
+        }
+    };
+})();
+
+// RPCProvider - Manages RPC connections with fallback and rate limiting
+const RPCProvider = (function() {
+    let _currentIndex = 0;
+    let _lastCallTime = 0;
+    let _callCount = 0;
+    const MIN_CALL_INTERVAL = 200; // Minimum ms between calls
+    const MAX_CALLS_PER_SECOND = 3;
+    let _web3Instance = null;
+    let _lastSuccessfulRpc = null;
+
+    function getNextRpc() {
+        // If we had a successful RPC, try it first
+        if (_lastSuccessfulRpc) {
+            return _lastSuccessfulRpc;
+        }
+        // Otherwise rotate through the list
+        const rpc = CONFIG.RPC_URLS[_currentIndex];
+        _currentIndex = (_currentIndex + 1) % CONFIG.RPC_URLS.length;
+        return rpc;
+    }
+
+    function markRpcSuccess(rpcUrl) {
+        _lastSuccessfulRpc = rpcUrl;
+    }
+
+    function markRpcFailed(rpcUrl) {
+        if (_lastSuccessfulRpc === rpcUrl) {
+            _lastSuccessfulRpc = null;
+        }
+    }
+
+    async function throttle() {
+        const now = Date.now();
+        const timeSinceLastCall = now - _lastCallTime;
+
+        // Reset counter every second
+        if (timeSinceLastCall > 1000) {
+            _callCount = 0;
+        }
+
+        // If too many calls, wait
+        if (_callCount >= MAX_CALLS_PER_SECOND) {
+            const waitTime = 1000 - timeSinceLastCall;
+            if (waitTime > 0) {
+                await new Promise(resolve => setTimeout(resolve, waitTime));
+            }
+            _callCount = 0;
+        }
+
+        // Ensure minimum interval between calls
+        if (timeSinceLastCall < MIN_CALL_INTERVAL) {
+            await new Promise(resolve => setTimeout(resolve, MIN_CALL_INTERVAL - timeSinceLastCall));
+        }
+
+        _lastCallTime = Date.now();
+        _callCount++;
+    }
+
+    return {
+        // Get a Web3 instance for read operations with fallback support
+        getWeb3: function() {
+            if (!_web3Instance) {
+                _web3Instance = new Web3(getNextRpc());
+            }
+            return _web3Instance;
+        },
+
+        // Execute a contract call with automatic fallback
+        call: async function(contractMethod) {
+            await throttle();
+
+            const errors = [];
+            for (let i = 0; i < CONFIG.RPC_URLS.length; i++) {
+                const rpcUrl = CONFIG.RPC_URLS[i];
+                try {
+                    const web3 = new Web3(rpcUrl);
+                    // Re-create contract with new web3 instance
+                    const result = await contractMethod(web3);
+                    markRpcSuccess(rpcUrl);
+                    return result;
+                } catch (error) {
+                    markRpcFailed(rpcUrl);
+                    errors.push({ rpc: rpcUrl, error: error.message });
+                    console.warn(`RPC ${rpcUrl} failed:`, error.message);
+                    // Continue to next RPC
+                }
+            }
+
+            // All RPCs failed
+            console.error('All RPCs failed:', errors);
+            throw new Error('All RPC endpoints failed: ' + errors.map(e => e.error).join(', '));
+        },
+
+        // Get current RPC URL
+        getCurrentRpc: function() {
+            return _lastSuccessfulRpc || CONFIG.RPC_URLS[0];
+        }
+    };
+})();
+
+// Simple cache for RPC results
+const RPCCache = (function() {
+    const _cache = {};
+    const DEFAULT_TTL = 30000; // 30 seconds default TTL
+
+    return {
+        get: function(key) {
+            const entry = _cache[key];
+            if (!entry) return null;
+            if (Date.now() > entry.expiry) {
+                delete _cache[key];
+                return null;
+            }
+            return entry.value;
+        },
+
+        set: function(key, value, ttl = DEFAULT_TTL) {
+            _cache[key] = {
+                value: value,
+                expiry: Date.now() + ttl
+            };
+        },
+
+        invalidate: function(key) {
+            delete _cache[key];
+        },
+
+        clear: function() {
+            Object.keys(_cache).forEach(key => delete _cache[key]);
         }
     };
 })();

@@ -9,12 +9,34 @@ let hasPaid = false; // Track if user has paid to play
 let triesRemaining = 0; // Track remaining tries (10 tries per payment)
 let paymentInProgress = false; // Track if payment is currently processing
 
+// Debounce tracking
+let _updateClaimButtonTimeout = null;
+let _updatePrizePoolTimeout = null;
+
 // Contract addresses (from centralized config)
 const FLAPPY_BIRD_CONTRACT_ADDRESS = CONFIG.CONTRACT_ADDRESS;
 const BASE_RPC = CONFIG.RPC_URL;
 
-// Update prize pool display
-async function updatePrizePool() {
+// Update prize pool display (with debouncing and caching)
+async function updatePrizePool(force = false) {
+    // Debounce: cancel pending calls
+    if (_updatePrizePoolTimeout) {
+        clearTimeout(_updatePrizePoolTimeout);
+        _updatePrizePoolTimeout = null;
+    }
+
+    // Check cache first (unless forced)
+    if (!force) {
+        const cached = RPCCache.get('totalPool');
+        if (cached !== null) {
+            const poolDisplay = document.getElementById('pool-amount');
+            if (poolDisplay) {
+                poolDisplay.textContent = `$${cached}`;
+            }
+            return;
+        }
+    }
+
     try {
         const poolDisplay = document.getElementById('pool-amount');
         if (!poolDisplay) {
@@ -24,13 +46,10 @@ async function updatePrizePool() {
         // Check if Web3 is loaded
         if (typeof Web3 === 'undefined') {
             poolDisplay.textContent = 'Loading...';
-            setTimeout(updatePrizePool, 1000); // Retry after 1 second
+            _updatePrizePoolTimeout = setTimeout(() => updatePrizePool(force), 1000);
             return;
         }
 
-        // Create a Web3 instance for reading (doesn't require wallet connection)
-        const readWeb3 = new Web3(BASE_RPC);
-        
         const contractABI = [
             {
                 "inputs": [],
@@ -40,12 +59,19 @@ async function updatePrizePool() {
                 "type": "function"
             }
         ];
-        
-        const contract = new readWeb3.eth.Contract(contractABI, FLAPPY_BIRD_CONTRACT_ADDRESS);
-        const totalPool = await contract.methods.totalPool().call();
-        
+
+        // Use RPCProvider with fallback
+        const totalPool = await RPCProvider.call(async (web3Instance) => {
+            const contract = new web3Instance.eth.Contract(contractABI, FLAPPY_BIRD_CONTRACT_ADDRESS);
+            return await contract.methods.totalPool().call();
+        });
+
         // Convert from 6 decimals (USDC) to readable format
         const poolUSDC = (parseInt(totalPool) / 1000000).toFixed(2);
+
+        // Cache the result
+        RPCCache.set('totalPool', poolUSDC, 30000); // 30 second TTL
+
         poolDisplay.textContent = `$${poolUSDC}`;
     } catch (error) {
         console.error('Error fetching prize pool:', error);
@@ -56,12 +82,8 @@ async function updatePrizePool() {
     }
 }
 
-// Call updatePrizePool immediately when script loads, and also on page load
-updatePrizePool(); // Call immediately
-if (document.readyState === 'loading') {
-    // Page still loading, wait for load event
-    window.addEventListener('load', updatePrizePool);
-}
+// Note: updatePrizePool is called in the window.addEventListener('load', ...) handler below
+// to avoid duplicate calls. The handler coordinates all initialization.
 
 // Update wallet display
 function updateWalletDisplay() {
@@ -140,8 +162,28 @@ async function forceGetChainId() {
     return { chainId, chainSource };
 }
 
-// Update claim button state
-async function updateClaimButton() {
+// Update claim button state (with debouncing and caching)
+async function updateClaimButton(force = false) {
+    const claimBtn = document.getElementById('claim-reward-btn');
+    if (!claimBtn) return;
+
+    // Debounce: cancel pending calls and schedule this one
+    if (_updateClaimButtonTimeout) {
+        clearTimeout(_updateClaimButtonTimeout);
+    }
+
+    // Debounce delay of 500ms unless forced
+    if (!force) {
+        _updateClaimButtonTimeout = setTimeout(() => _doUpdateClaimButton(false), 500);
+        return;
+    }
+
+    await _doUpdateClaimButton(true);
+}
+
+// Internal function to actually update claim button
+async function _doUpdateClaimButton(skipCache = false) {
+    _updateClaimButtonTimeout = null;
     const claimBtn = document.getElementById('claim-reward-btn');
     if (!claimBtn) return;
 
@@ -149,6 +191,22 @@ async function updateClaimButton() {
         claimBtn.disabled = true;
         claimBtn.textContent = 'Connect Wallet First';
         return;
+    }
+
+    // Check cache first (unless skipping)
+    if (!skipCache) {
+        const cacheKey = `reward_${userAccount}`;
+        const cached = RPCCache.get(cacheKey);
+        if (cached !== null) {
+            if (parseFloat(cached) > 0) {
+                claimBtn.disabled = false;
+                claimBtn.textContent = `Claim $${cached}`;
+            } else {
+                claimBtn.disabled = true;
+                claimBtn.textContent = 'No Reward Available';
+            }
+            return;
+        }
     }
 
     try {
@@ -160,7 +218,7 @@ async function updateClaimButton() {
         // Check if on correct network (Base Mainnet)
         if (chainId !== 8453) {
             claimBtn.disabled = true;
-            
+
             // Provide specific guidance based on detected chain
             if (chainId === 1) {
                 claimBtn.textContent = 'Wrong Network (Ethereum)';
@@ -175,9 +233,7 @@ async function updateClaimButton() {
             }
             return;
         }
-        
-        // Check if user has rewards to claim - use read-only RPC for reliability
-        const readWeb3 = new Web3(BASE_RPC);
+
         const contractABI = [
             {
                 "inputs": [{"name": "", "type": "address"}],
@@ -187,11 +243,19 @@ async function updateClaimButton() {
                 "type": "function"
             }
         ];
-        
-        const contract = new readWeb3.eth.Contract(contractABI, FLAPPY_BIRD_CONTRACT_ADDRESS);
-        const reward = await contract.methods.rewards(userAccount).call();
+
+        // Use RPCProvider with fallback
+        const reward = await RPCProvider.call(async (web3Instance) => {
+            const contract = new web3Instance.eth.Contract(contractABI, FLAPPY_BIRD_CONTRACT_ADDRESS);
+            return await contract.methods.rewards(userAccount).call();
+        });
+
         const rewardUSDC = (parseInt(reward) / 1000000).toFixed(2);
-        
+
+        // Cache the result
+        const cacheKey = `reward_${userAccount}`;
+        RPCCache.set(cacheKey, rewardUSDC, 30000); // 30 second TTL
+
         if (parseFloat(rewardUSDC) > 0) {
             claimBtn.disabled = false;
             claimBtn.textContent = `Claim $${rewardUSDC}`;
@@ -237,9 +301,10 @@ async function claimReward() {
         
         console.log('Reward claimed! Transaction:', tx.transactionHash);
         alert('Reward claimed successfully!');
-        
-        // Update button state
-        await updateClaimButton();
+
+        // Invalidate cache and update button state
+        RPCCache.invalidate(`reward_${userAccount}`);
+        await updateClaimButton(true);
     } catch (error) {
         console.error('Claim failed:', error);
         alert('Failed to claim reward: ' + (error.message || 'Unknown error'));
@@ -523,8 +588,9 @@ async function payToPlay() {
                 // Don't fail the payment if recording fails
             }
             
-            // Update prize pool display after payment
-            await updatePrizePool();
+            // Invalidate cache and update prize pool display after payment
+            RPCCache.invalidate('totalPool');
+            await updatePrizePool(true);
             
             if (payBtn) {
                 payBtn.textContent = originalText;
@@ -690,8 +756,9 @@ async function donate() {
             // Don't fail the donation if recording fails
         }
 
-        // Update prize pool display
-        await updatePrizePool();
+        // Invalidate cache and update prize pool display
+        RPCCache.invalidate('totalPool');
+        await updatePrizePool(true);
 
         alert(`Thank you for donating $${donateAmount.toFixed(2)} USDC!`);
         donateAmountInput.value = '';
@@ -794,12 +861,13 @@ window.addEventListener('load', async () => {
     }
     
     // Update prize pool - this should always run regardless of wallet errors
-    updatePrizePool();
-    updateClaimButton();
-    
-    // Refresh prize pool and claim button every 30 seconds
+    // Use force=true for initial load to bypass cache
+    updatePrizePool(true);
+    updateClaimButton(true);
+
+    // Refresh prize pool and claim button every 60 seconds (increased from 30s due to caching)
     setInterval(() => {
-        updatePrizePool();
-        updateClaimButton();
-    }, 30000);
+        updatePrizePool(true); // Force refresh from chain
+        updateClaimButton(true); // Force refresh from chain
+    }, 60000);
 });

@@ -416,12 +416,19 @@
 
         // Contract configuration (from centralized config)
         const contractAddress = CONFIG.CONTRACT_ADDRESS;
-        const rpcUrl = CONFIG.RPC_URL;
 
-        // Load prize pool from smart contract
-        async function loadPrizePool() {
+        // Load prize pool from smart contract (uses RPCProvider with fallback)
+        async function loadPrizePool(force = false) {
+            // Check cache first (unless forced)
+            if (!force) {
+                const cached = RPCCache.get('totalPool_index');
+                if (cached !== null) {
+                    document.getElementById('pool-amount').textContent = cached + ' USDC';
+                    return;
+                }
+            }
+
             try {
-                const web3 = new Web3(rpcUrl);
                 const contractABI = [
                     {
                         "inputs": [],
@@ -431,12 +438,19 @@
                         "type": "function"
                     }
                 ];
-                
-                const contract = new web3.eth.Contract(contractABI, contractAddress);
-                const totalPoolWei = await contract.methods.totalPool().call();
-                const totalPoolUSDC = parseFloat(totalPoolWei) / 1000000; // USDC has 6 decimals
-                
-                document.getElementById('pool-amount').textContent = totalPoolUSDC.toFixed(2) + ' USDC';
+
+                // Use RPCProvider with automatic fallback
+                const totalPoolWei = await RPCProvider.call(async (web3Instance) => {
+                    const contract = new web3Instance.eth.Contract(contractABI, contractAddress);
+                    return await contract.methods.totalPool().call();
+                });
+
+                const totalPoolUSDC = (parseFloat(totalPoolWei) / 1000000).toFixed(2);
+
+                // Cache the result for 30 seconds
+                RPCCache.set('totalPool_index', totalPoolUSDC, 30000);
+
+                document.getElementById('pool-amount').textContent = totalPoolUSDC + ' USDC';
             } catch (error) {
                 console.error('Error loading prize pool:', error);
                 console.error('Error details:', error.message);
@@ -544,12 +558,12 @@
         }
 
         // Initialize
-        loadPrizePool();
+        loadPrizePool(true); // Force initial load
         loadCycleTime();
         loadStats();
 
-        // Refresh prize pool every 30 seconds
-        setInterval(loadPrizePool, 30000);
+        // Refresh prize pool every 60 seconds (with RPC caching)
+        setInterval(() => loadPrizePool(true), 60000);
 
         // Profile link handler
         document.getElementById('profile-link').addEventListener('click', (e) => {
