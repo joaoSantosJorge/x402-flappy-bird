@@ -18,6 +18,13 @@
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
+    ],
+    "rewrites": [
+      { "source": "/profile", "destination": "/profile.html" },
+      { "source": "/admin", "destination": "/admin.html" },
+      { "source": "/game", "destination": "/game.html" },
+      { "source": "/archive", "destination": "/archive.html" },
+      { "source": "/rules", "destination": "/rules.html" }
     ]
   },
   "functions": [
